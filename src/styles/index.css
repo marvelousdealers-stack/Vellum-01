@@ -1,0 +1,357 @@
+/* ═══════════════════════════════════════════════════════════════
+   VELLUM — Design tokens, v5
+
+   DIRECTION
+   Vellum is parchment: a calm paper-toned workspace, written on in
+   ink. The system borrows the structure of the reference dashboards
+   (WeHR: deep-navy rail + pastel KPI cards; Promage: icon-badge
+   metrics + warm paper; Tesla Reports: white rounded cards, soft
+   gradient bars) and gives it one identity:
+
+     paper   #F7F6F2   page background (warm, not cream)
+     ink     #0E143B   navigation rail, primary text hue (navy-violet)
+     indigo  #414FD2   actions, links, focus (fountain-pen ink)
+     gold    #EBBD57   the single accent: brand dot, active marker
+
+   RESEARCH-BACKED DECISIONS
+   · Light is the default — dark is a supported opt-in (long daytime
+     reading of dense tables is easier on light surfaces); the OS
+     preference is still respected.
+   · Every text token meets WCAG 2.2 AA on the surfaces it sits on
+     (ink 15.9:1, ink-2 8.5:1, ink-3 5.5:1 on cards; semantic colors
+     ≥ 5.2:1 on their tints). ink-4 is decorative only (3:1).
+   · Status is never color-only — components pair color with an icon
+     or label.
+   · One serif voice (Fraunces) for page titles + wordmark; everything
+     else is Plus Jakarta Sans with tabular numerals. No ALL-CAPS
+     eyebrows, no tracked mono labels.
+   · Layered neutrals + soft navy-tinted shadows instead of glows,
+     gradient washes, or glassmorphism. Motion is reserved for
+     responses to user action; reduced-motion is respected.
+   ═══════════════════════════════════════════════════════════════ */
+
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+/* ═══ KEYFRAMES ═══ */
+@keyframes qin { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@keyframes kpi-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+@keyframes fade-in { from { opacity:0; } to { opacity:1; } }
+@keyframes toast-in { from { opacity:0; transform:translateY(12px) scale(0.96); } to { opacity:1; transform:none; } }
+@keyframes page-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@keyframes beacon { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
+@keyframes spin { to { transform:rotate(360deg); } }
+@keyframes confirm-pulse { 0% { transform:scale(0.85); opacity:0; } 60% { transform:scale(1.05); opacity:1; } 100% { transform:scale(1); opacity:1; } }
+@keyframes cmd-in { from { opacity:0; transform:translateY(-10px) scale(0.98); } to { opacity:1; transform:none; } }
+@keyframes skeleton-shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+@keyframes slide { 0% { transform:translateX(-100%); } 100% { transform:translateX(400%); } }
+@keyframes sidebar-marker-in { from { transform:translateY(-50%) scaleY(0); } to { transform:translateY(-50%) scaleY(1); } }
+@keyframes ring-pulse { 0% { box-shadow:0 0 0 0 var(--color-primary-dim); } 70% { box-shadow:0 0 0 12px transparent; } 100% { box-shadow:0 0 0 0 transparent; } }
+@keyframes glow-breathe { 0%,100% { opacity:0.35; } 50% { opacity:0.55; } }
+
+@theme {
+  /* ═══ SURFACES (light is the default theme) ═══ */
+  --color-bg:        oklch(0.972 0.005 90);   /* paper */
+  --color-surface:   oklch(1 0 0);            /* cards */
+  --color-raised:    oklch(0.962 0.006 90);   /* hover / inset */
+  --color-overlay:   oklch(0.940 0.007 90);
+  --color-sunken:    oklch(0.950 0.007 90);
+
+  /* ═══ BORDERS — ink-tinted hairlines ═══ */
+  --color-rule:      oklch(0.255 0.060 272 / 0.08);
+  --color-rule-2:    oklch(0.255 0.060 272 / 0.15);
+  --color-rule-3:    oklch(0.255 0.060 272 / 0.24);
+
+  /* ═══ INK ═══ */
+  --color-ink:       oklch(0.255 0.060 272);
+  --color-ink-2:     oklch(0.420 0.045 272);
+  --color-ink-3:     oklch(0.520 0.032 272);
+  --color-ink-4:     oklch(0.660 0.020 272);   /* decorative only */
+
+  /* ═══ PRIMARY — fountain-pen indigo ═══ */
+  --color-primary:      oklch(0.500 0.200 272);
+  --color-primary-2:    oklch(0.445 0.200 272);
+  --color-primary-dim:  oklch(0.500 0.200 272 / 0.12);
+  --color-primary-soft: oklch(0.500 0.200 272 / 0.06);
+  --color-on-primary:   oklch(0.990 0 0);
+
+  /* ═══ GOLD — the one accent ═══ */
+  --color-gold:         oklch(0.820 0.130 85);
+
+  /* ═══ SEMANTIC ═══ */
+  --color-success:     oklch(0.460 0.120 158);
+  --color-success-dim: oklch(0.460 0.120 158 / 0.12);
+  --color-warning:     oklch(0.500 0.130 65);
+  --color-warning-dim: oklch(0.500 0.130 65 / 0.14);
+  --color-danger:      oklch(0.520 0.190 25);
+  --color-danger-dim:  oklch(0.520 0.190 25 / 0.12);
+  --color-on-danger:   oklch(0.990 0 0);
+
+  /* ═══ TINTS — pastel KPI card fills (WeHR) ═══ */
+  --color-tint-primary: oklch(0.955 0.030 272);
+  --color-tint-success: oklch(0.958 0.040 160);
+  --color-tint-warning: oklch(0.960 0.045 75);
+  --color-tint-danger:  oklch(0.958 0.035 20);
+
+  /* ═══ SIDEBAR — navy rail in BOTH themes ═══ */
+  --color-sidebar-bg:      oklch(0.215 0.075 272);
+  --color-sidebar-surface: oklch(0.250 0.078 272);
+  --color-sidebar-hover:   oklch(0.265 0.080 272);
+  --color-sidebar-active:  oklch(0.300 0.090 272);
+  --color-sidebar-ink:     oklch(0.970 0.010 272);
+  --color-sidebar-ink-2:   oklch(0.780 0.030 272);
+  --color-sidebar-ink-3:   oklch(0.680 0.040 272);
+  --color-sidebar-rule:    oklch(1 0 0 / 0.09);
+  --color-sidebar-accent:  oklch(0.820 0.130 85);
+
+  --color-mark-fg: oklch(0.990 0 0);
+
+  /* ═══ FONTS ═══ */
+  --font-sans:    'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif:   'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  /* "mono" utilities now mean tabular figures in the UI face. */
+  --font-mono:    'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* ═══ RADII ═══ */
+  --radius-control:   10px;
+  --radius-container: 14px;
+  --radius-modal:     20px;
+  --radius-bento:     20px;
+
+  /* ═══ ELEVATION — soft, ink-tinted ═══ */
+  --shadow-card:      0 1px 2px oklch(0.255 0.060 272 / 0.05), 0 6px 18px -6px oklch(0.255 0.060 272 / 0.07);
+  --shadow-raised:    0 2px 4px oklch(0.255 0.060 272 / 0.06), 0 12px 28px -8px oklch(0.255 0.060 272 / 0.14);
+  --shadow-elevated:  0 4px 8px oklch(0.255 0.060 272 / 0.06), 0 20px 44px -10px oklch(0.255 0.060 272 / 0.20);
+  --shadow-modal:     0 8px 16px oklch(0.255 0.060 272 / 0.08), 0 36px 80px -16px oklch(0.255 0.060 272 / 0.32);
+  --shadow-primary:   0 1px 2px oklch(0.500 0.200 272 / 0.30), 0 6px 14px -4px oklch(0.500 0.200 272 / 0.38);
+  --shadow-danger:    0 1px 2px oklch(0.520 0.190 25 / 0.30), 0 6px 14px -4px oklch(0.520 0.190 25 / 0.36);
+  --shadow-glow:      0 0 0 4px oklch(0.500 0.200 272 / 0.16);
+
+  /* ═══ BREAKPOINTS ═══ */
+  --breakpoint-narrow: 520px;
+  --breakpoint-tablet: 860px;
+
+  /* ═══ ANIMATIONS ═══ */
+  --animate-qin:            qin 280ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  --animate-kpi-in:         kpi-in 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  --animate-fade-in:        fade-in 220ms ease-out;
+  --animate-toast-in:       toast-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-page-in:        page-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-beacon:         beacon 2.4s ease-in-out infinite;
+  --animate-spin-slow:      spin 1.5s linear infinite;
+  --animate-spin-fast:      spin 700ms linear infinite;
+  --animate-confirm-pulse:  confirm-pulse 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-cmd-in:         cmd-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide:          slide 1.4s ease-in-out infinite;
+  --animate-sidebar-marker: sidebar-marker-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-ring-pulse:     ring-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-glow-breathe:   glow-breathe 4s ease-in-out infinite;
+}
+
+/* ═══ SHADCN/UI COMPATIBILITY ═══════════════════════════════════
+   Components from shadcn/ui (and its registries/blocks) use these
+   semantic names. They are aliases of the Vellum tokens above, so
+   `npx shadcn@latest add dialog select tooltip …` works out of the
+   box and inherits both themes. Edit the Vellum tokens, never these.
+   (`inline` = utilities reference the Vellum variable directly, so the
+   dark-theme override still applies.) */
+@theme inline {
+  --color-background:           var(--color-bg);
+  --color-foreground:           var(--color-ink);
+  --color-card:                 var(--color-surface);
+  --color-card-foreground:      var(--color-ink);
+  --color-popover:              var(--color-surface);
+  --color-popover-foreground:   var(--color-ink);
+  --color-primary-foreground:   var(--color-on-primary);
+  --color-secondary:            var(--color-raised);
+  --color-secondary-foreground: var(--color-ink);
+  --color-muted:                var(--color-raised);
+  --color-muted-foreground:     var(--color-ink-3);
+  --color-accent:               var(--color-raised);
+  --color-accent-foreground:    var(--color-ink);
+  --color-destructive:          var(--color-danger);
+  --color-border:               var(--color-rule-2);
+  --color-input:                var(--color-rule-3);
+  --color-ring:                 var(--color-primary);
+}
+
+/* ═══ DARK THEME (opt-in) ═══ */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg:        oklch(0.165 0.030 272);
+  --color-surface:   oklch(0.205 0.035 272);
+  --color-raised:    oklch(0.245 0.040 272);
+  --color-overlay:   oklch(0.285 0.044 272);
+  --color-sunken:    oklch(0.135 0.028 272);
+
+  --color-rule:      oklch(1 0 0 / 0.07);
+  --color-rule-2:    oklch(1 0 0 / 0.12);
+  --color-rule-3:    oklch(1 0 0 / 0.20);
+
+  --color-ink:       oklch(0.955 0.010 272);
+  --color-ink-2:     oklch(0.790 0.022 272);
+  --color-ink-3:     oklch(0.660 0.030 272);
+  --color-ink-4:     oklch(0.500 0.030 272);
+
+  --color-primary:      oklch(0.740 0.140 272);
+  --color-primary-2:    oklch(0.800 0.130 272);
+  --color-primary-dim:  oklch(0.740 0.140 272 / 0.18);
+  --color-primary-soft: oklch(0.740 0.140 272 / 0.09);
+  --color-on-primary:   oklch(0.170 0.030 272);
+
+  --color-success:     oklch(0.770 0.140 158);
+  --color-success-dim: oklch(0.770 0.140 158 / 0.16);
+  --color-warning:     oklch(0.800 0.130 80);
+  --color-warning-dim: oklch(0.800 0.130 80 / 0.16);
+  --color-danger:      oklch(0.730 0.160 25);
+  --color-danger-dim:  oklch(0.730 0.160 25 / 0.16);
+  --color-on-danger:   oklch(0.170 0.030 272);
+
+  /* Dark tints stay close to the surface: a hint of hue, not a colored slab. */
+  --color-tint-primary: oklch(0.240 0.045 272);
+  --color-tint-success: oklch(0.232 0.030 158);
+  --color-tint-warning: oklch(0.245 0.032 75);
+  --color-tint-danger:  oklch(0.240 0.040 20);
+
+  --color-sidebar-bg:      oklch(0.135 0.045 272);
+  --color-sidebar-surface: oklch(0.170 0.050 272);
+  --color-sidebar-hover:   oklch(0.205 0.055 272);
+  --color-sidebar-active:  oklch(0.250 0.065 272);
+
+  --shadow-card:      0 1px 2px oklch(0 0 0 / 0.30), 0 0 0 1px oklch(1 0 0 / 0.03) inset;
+  --shadow-raised:    0 6px 16px oklch(0 0 0 / 0.38), 0 0 0 1px oklch(1 0 0 / 0.05) inset;
+  --shadow-elevated:  0 14px 36px oklch(0 0 0 / 0.46), 0 0 0 1px oklch(1 0 0 / 0.06) inset;
+  --shadow-modal:     0 32px 72px oklch(0 0 0 / 0.58), 0 0 0 1px oklch(1 0 0 / 0.07) inset;
+  --shadow-primary:   0 6px 18px oklch(0.740 0.140 272 / 0.26);
+  --shadow-danger:    0 6px 18px oklch(0.730 0.160 25 / 0.26);
+  --shadow-glow:      0 0 0 4px oklch(0.740 0.140 272 / 0.22);
+}
+
+/* ═══ BASE ═══ */
+@layer base {
+  html, body, #root { height: 100%; }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.55;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+
+  button { font-family: inherit; }
+  input, select, textarea { font-family: inherit; }
+
+  /* Numbers line up in tables, KPIs and anything using the "mono" utilities. */
+  .font-mono, .tabular-nums { font-variant-numeric: tabular-nums; }
+
+  ::selection { background: var(--color-primary-dim); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-rule-2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-rule-3); }
+  * { scrollbar-width: thin; scrollbar-color: var(--color-rule-2) transparent; }
+
+  /* Default border color = hairline (Tailwind v4 defaults to currentColor). */
+  *, ::after, ::before { border-color: var(--color-rule); }
+
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+  /* The navy rail needs a light focus ring (indigo on navy fails contrast). */
+  aside :focus-visible { outline-color: var(--color-gold); }
+}
+
+/* ═══ COMPONENTS ═══ */
+@layer components {
+  /* Bento grid: 1 col phones → 2 tablet → 4 desktop. Cards claim territory
+     with col-span / row-span; hierarchy comes from size, not decoration. */
+  .bento {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    grid-auto-rows: minmax(160px, auto);
+  }
+  @media (min-width: 640px) {
+    .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  }
+  @media (min-width: 1024px) {
+    .bento { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; grid-auto-rows: minmax(180px, auto); }
+  }
+  .bento > * { min-width: 0; }
+
+  /* KPI strip — legacy API kept for compatibility. Prefer .bento. */
+  .kpi-strip > * { animation: kpi-in 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+  .kpi-strip > *:nth-child(1) { animation-delay: 0ms; }
+  .kpi-strip > *:nth-child(2) { animation-delay: 60ms; }
+  .kpi-strip > *:nth-child(3) { animation-delay: 120ms; }
+  .kpi-strip > *:nth-child(4) { animation-delay: 180ms; }
+  .kpi-strip > *:nth-child(5) { animation-delay: 240ms; }
+  .kpi-strip > *:nth-child(6) { animation-delay: 300ms; }
+
+  /* Floating layers (modals, toasts, command palette): solid surface +
+     elevation. No blur — it costs paint time and lowers text contrast. */
+  .glass, .glass-strong {
+    background: var(--color-surface);
+    border: 1px solid var(--color-rule-2);
+    box-shadow: var(--shadow-modal);
+  }
+
+  /* Legacy decoration hooks. Kept as class names so existing markup keeps
+     working, but they no longer draw glows or gradient borders. */
+  .gradient-border { position: relative; }
+  .hero-glow { position: relative; overflow: hidden; }
+
+  /* Hover lift — only on things that are clickable. */
+  .lift {
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-raised); }
+
+}
+
+/* ═══ PRINT ═══ */
+@media print {
+  html[data-theme], :root {
+    color-scheme: light;
+    --color-bg: #ffffff;
+    --color-surface: #ffffff;
+    --color-ink: #111111;
+    --color-ink-2: #333333;
+    --color-ink-3: #666666;
+    --color-rule: #e5e5e5;
+    --color-rule-2: #d4d4d4;
+  }
+  html, body { background: #fff !important; color: #111 !important; background-image: none !important; }
+  .no-print { display: none !important; }
+  .glass, .glass-strong { background: #fff !important; backdrop-filter: none !important; }
+  .shadow-xl, .shadow-2xl, [class*="shadow-"] { box-shadow: none !important; }
+  @page { size: A4 portrait; margin: 18mm 15mm; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
