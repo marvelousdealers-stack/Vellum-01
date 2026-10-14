@@ -4,6 +4,7 @@ import { NumberStepper } from "./NumberStepper";
 import { ScopeEstimate } from "./ScopeEstimate";
 import { TopicInput } from "./TopicInput";
 import { Bento, Chip, ChipRow, Conn, SectionHeader } from "@/components/common";
+import { inputClass } from "@/components/common/FormField";
 import { DEFAULT_MIX, QuestionMixBuilder } from "@/components/common/QuestionMixBuilder";
 import { useToast } from "@/context/ToastContext";
 import { TOPICS } from "@/data/analytics";
@@ -17,17 +18,19 @@ import { Button } from "@/components/ui/button";
 // the ScopeEstimate card (rendered by the caller in a featured
 // Bento) previews what the draft will produce.
 // ═══════════════════════════════════════════════════════════════
-export const DraftRulesScreen = ({ onCancel, onCreate }) => {
+// Guide §1: the teacher can give "2-4 topics to focus on".
+const MAX_FOCUS_TOPICS = 4;
+
+export const DraftRulesScreen = ({ onCancel, onCreate, scope = "" }) => {
   const toast = useToast();
+  const [title, setTitle] = useState("");
   const [mix, setMix] = useState(DEFAULT_MIX);
   const [targetMarks, setTargetMarks] = useState(60);
   const [duration, setDuration] = useState(30);
   const [mode, setMode] = useState("class");
   const [difficulty, setDifficulty] = useState("balanced");
-  const [focusTopics, setFocusTopics] = useState([
-    "Newton's Laws of Motion",
-    "Thermodynamics",
-  ]);
+  // Optional: with no focus topics the test weighs the whole outline.
+  const [focusTopics, setFocusTopics] = useState([]);
   const [instruction, setInstruction] = useState("");
   const [busy, setBusy] = useState(false);
   const [queued, setQueued] = useState(false);
@@ -65,6 +68,7 @@ export const DraftRulesScreen = ({ onCancel, onCreate }) => {
       return;
     }
     const config = {
+      title: title.trim(),
       mix,
       targetMarks,
       duration,
@@ -98,14 +102,14 @@ export const DraftRulesScreen = ({ onCancel, onCreate }) => {
 
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
-        Physics · Grade 11A <span className="text-ink-3">/</span> New test{" "}
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        {scope && <>{scope} <span className="text-ink-3">/</span> </>}New test{" "}
         <span className="text-ink-3">/</span> Rules
       </div>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
             Set the rules
           </h1>
           <p className="mt-2 max-w-[680px] text-[14px] leading-relaxed text-ink-2">
@@ -122,6 +126,25 @@ export const DraftRulesScreen = ({ onCancel, onCreate }) => {
         <div className="flex min-w-0 flex-col gap-5">
           <Bento>
             <SectionHeader label="Test structure" />
+
+            {/* Title */}
+            <div className="mb-6">
+              <label
+                htmlFor="test-title"
+                className="mb-3 block text-[13.5px] font-medium text-ink"
+              >
+                Test title <span className="font-normal text-ink-3">(optional)</span>
+              </label>
+              <input
+                id="test-title"
+                type="text"
+                value={title}
+                maxLength={80}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Newton's Laws — Unit Test"
+                className={inputClass}
+              />
+            </div>
 
             {/* Question mix */}
             <div className="mb-6">
@@ -233,14 +256,14 @@ export const DraftRulesScreen = ({ onCancel, onCreate }) => {
                   Focus topics
                 </span>
                 <span className="font-mono text-[12.5px] font-medium tabular-nums text-primary">
-                  {focusTopics.length}/6
+                  {focusTopics.length}/{MAX_FOCUS_TOPICS}
                 </span>
               </div>
               <TopicInput
                 value={focusTopics}
                 onChange={setFocusTopics}
                 suggestions={suggestions}
-                max={6}
+                max={MAX_FOCUS_TOPICS}
                 placeholder="Pick a topic or type your own, then press Enter…"
               />
             </div>

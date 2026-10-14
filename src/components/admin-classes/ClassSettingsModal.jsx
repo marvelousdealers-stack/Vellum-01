@@ -11,34 +11,41 @@ export const ClassSettingsModal = ({
   onClose,
   cls,
   availableTeachers = [],
-  currentTeachers = [],
+  currentTeacherIds = [],
   onSave,
   onDelete,
 }) => {
   const toast = useToast();
   const [name, setName] = useState("");
-  const [year, setYear] = useState("2026");
+  const [busy, setBusy] = useState(false);
   const [assigned, setAssigned] = useState([]);
 
   useEffect(() => {
     if (!open) return;
     setName(cls?.name || "");
-    setYear("2026");
-    setAssigned(currentTeachers);
-  }, [open, cls, currentTeachers]);
+    setAssigned(currentTeacherIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cls?.id]);
 
   if (!open) return null;
 
   const toggleTeacher = (t) =>
     setAssigned((a) => (a.includes(t) ? a.filter((x) => x !== t) : [...a, t]));
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim()) {
       toast.push("Class name is required", "error");
       return;
     }
-    onSave?.({ name: name.trim(), academicYear: year, teachers: assigned });
-    toast.push("Class settings saved", "success");
-    onClose();
+    setBusy(true);
+    try {
+      await onSave?.({ name: name.trim(), teacherIds: assigned });
+      toast.push("Class settings saved", "success");
+      onClose();
+    } catch (err) {
+      toast.push(err.message || "Couldn't save the class", "error");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -56,6 +63,7 @@ export const ClassSettingsModal = ({
           </Button>
           <Button
             onClick={submit}
+            disabled={busy}
           >
             Save changes
           </Button>
@@ -72,14 +80,6 @@ export const ClassSettingsModal = ({
         />
       </Field>
 
-      <Field label="Academic year">
-        <input
-          value={year}
-          onChange={(e) => setYear(e.target.value)}
-          className={inputClass}
-        />
-      </Field>
-
       <Field
         label="Assigned teachers"
         hint="Removing a teacher unassigns them from this class but keeps their account active."
@@ -92,11 +92,11 @@ export const ClassSettingsModal = ({
           )}
           {availableTeachers.map((t) => (
             <Chip
-              key={t}
-              active={assigned.includes(t)}
-              onClick={() => toggleTeacher(t)}
+              key={t.id}
+              active={assigned.includes(t.id)}
+              onClick={() => toggleTeacher(t.id)}
             >
-              {t}
+              {t.name}
             </Chip>
           ))}
         </ChipRow>
@@ -112,8 +112,8 @@ export const ClassSettingsModal = ({
               Delete this class
             </strong>
             <span className="block text-[12px] leading-relaxed text-ink-2">
-              Unassigns all students and teachers. Test history remains in the
-              system but becomes inaccessible. Cannot be undone.
+              Unassigns its students and removes its subjects. Blocked while the
+              class still has tests. Cannot be undone.
             </span>
           </div>
           <Button

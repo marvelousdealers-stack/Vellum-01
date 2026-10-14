@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useNavigate } from "react-router";
 import { AnalyticsOverview } from "@/components/teacher-analytics/AnalyticsOverview";
-import { StudentProfile } from "@/components/teacher-analytics/StudentProfile";
 
-// ─── Teacher analytics route: wraps analytics + student-profile drill-down.
+// ─── Teacher analytics (/teacher/analytics). A student opens at
+// /teacher/analytics/:studentId (TeacherStudentProfile), so it can be linked to.
 const TeacherAnalytics = () => {
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  return selectedStudent ? (
-    <StudentProfile student={selectedStudent} onBack={() => setSelectedStudent(null)} />
-  ) : (
-    <AnalyticsOverview onStudentClick={setSelectedStudent} />
+  const navigate = useNavigate();
+  return (
+    <AnalyticsOverview
+      onStudentClick={(s) => navigate(`/teacher/analytics/${encodeURIComponent(s.roll)}`)}
+    />
   );
 };
 

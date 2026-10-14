@@ -30,16 +30,16 @@ export const buttonVariants = cva(
         destructive:
           "bg-destructive text-on-danger shadow-[var(--shadow-danger)] hover:opacity-90",
         outline:
-          "border border-border bg-card text-foreground hover:border-rule-3 hover:bg-secondary",
+          "border border-border bg-card text-foreground hover:border-rule-3 hover:bg-secondary dark:bg-white/[0.04] dark:hover:bg-white/[0.08]",
         secondary: "bg-secondary text-secondary-foreground hover:bg-overlay",
-        ghost: "text-foreground hover:bg-secondary",
+        ghost: "text-foreground hover:bg-secondary dark:hover:bg-white/[0.06]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4",
-        sm: "h-8 gap-1.5 px-3 text-[12.5px]",
-        lg: "h-11 px-6 text-[14px]",
-        icon: "size-10",
+        default: "h-10 px-4 pointer-coarse:h-11",
+        sm: "h-8 gap-1.5 px-3 text-[12.5px] pointer-coarse:h-10",
+        lg: "h-11 px-6 text-[14px] pointer-coarse:h-12",
+        icon: "size-10 pointer-coarse:size-11",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

@@ -1,7 +1,12 @@
-import { createContext, useContext, useState, useMemo } from "react";
-import { CLASSES, CLASS_THREADS } from "@/data/classes";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { fetchMe } from "@/api/auth";
+import { clearCache } from "@/api/cache";
+import { onUnauthorized, setAuthToken } from "@/api/client";
+import { CLASS_THREADS } from "@/data/classes";
 import { LMS_COURSES, LMS_LESSONS } from "@/data/lms";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useToast } from "@/context/ToastContext";
+import { useClasses, useSubjects } from "@/hooks/useSubjects";
 
 // ═══════════════════════════════════════════════════════════════
 // APP CONTEXT
@@ -11,13 +16,13 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 // and any feature page can read/write without prop drilling.
 //
 // Persisted (survives reload):
-//   · role            — which shell/sidebar to show
-//   · activeClassId   — currently selected class
+//   · user            — who is signed in (from /auth/login); `role` comes from it
+//   · activeClassId, activeSubjectId — the teacher's current class and subject
 //
 // Transient (in-memory only):
-//   · drafts, courses, threads — mock data mutated by the UI
+//   · courses, threads — local demo data mutated by the UI
+//     (tests, attempts and grading come from the API via hooks/)
 //   · modal open/close flags
-//   · rosterOverrides — admin added/removed students
 // ═══════════════════════════════════════════════════════════════
 const AppCtx = createContext(null);
 
@@ -27,83 +32,103 @@ export const useApp = () => {
   return ctx;
 };
 
-const INITIAL_DRAFTS = [
-  { id: 1, title: "Newton's Laws — Unit Test",   cls: "11A", questions: 12, marks: 40, status: "draft",     lastEdited: "2 min ago" },
-  { id: 2, title: "Thermodynamics — Mid-term",   cls: "11A", questions: 15, marks: 60, status: "scheduled", lastEdited: "yesterday" },
-  { id: 3, title: "Bonding & Structure",         cls: "11A", questions: 10, marks: 30, status: "draft",     lastEdited: "3 days ago" },
-  { id: 4, title: "Kinematics — Quiz",           cls: "11A", questions: 8,  marks: 25, status: "completed", lastEdited: "last week" },
-  { id: 5, title: "Wave Optics — Quiz 2",        cls: "11A", questions: 10, marks: 30, status: "live",      lastEdited: "just now" },
-];
-
 export const AppProvider = ({ children }) => {
+  const toast = useToast();
   // ── Persisted ──────────────────────────────────────────────
-  const [role, setRole]               = usePersistentState("vellum.role", null);
-  const [activeClassId, setActiveClassId] =
-    usePersistentState("vellum.activeClass", "cls-11a");
+  const [user, setUser]               = usePersistentState("vellum.user", null);
+  const role = user?.role ?? null;
+  const [activeClassId, setActiveClassId] = usePersistentState("vellum.activeClass", null);
+  const [activeSubjectId, setActiveSubjectId] = usePersistentState("vellum.activeSubject", null);
+
+  // ── Session ────────────────────────────────────────────────
+  const signIn = useCallback(({ token, user: signedIn }) => {
+    setAuthToken(token);
+    setUser(signedIn);
+  }, [setUser]);
+  const signOut = useCallback(() => {
+    setAuthToken(null);
+    setUser(null);
+    clearCache(); // nothing from this session may show up for the next user
+  }, [setUser]);
+
+  // Any 401 from the API ends the session; on load, confirm the saved one
+  // is still valid and refresh what we know about the user.
+  // A 401 while signed in = expired session → sign out and say why. A 401
+  // with no session (e.g. wrong password on /login) is the form's own error.
+  const sessionRef = useRef(!!user);
+  sessionRef.current = !!user;
+  useEffect(() => {
+    onUnauthorized(() => {
+      if (!sessionRef.current) return;
+      sessionRef.current = false; // several polls can 401 at once — react once
+      signOut();
+      toast.push("Your session expired — please sign in again", "info");
+    });
+    if (user) fetchMe().then(setUser).catch(() => {});
+    // run once at startup
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Transient app data ─────────────────────────────────────
-  const [drafts, setDrafts]                     = useState(INITIAL_DRAFTS);
   const [courses, setCourses]                   = useState(LMS_COURSES);
   const [courseLessons, setCourseLessons]       = useState(LMS_LESSONS);
   const [threads, setThreads]                   = useState(CLASS_THREADS);
-  const [rosterOverrides, setRosterOverrides]   = useState({});
 
   // ── Modal + overlay state ──────────────────────────────────
   const [cmdOpen, setCmdOpen]                   = useState(false);
   const [confirmState, setConfirmState]         = useState(null);
-  const [previewOpen, setPreviewOpen]           = useState(false);
-  const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [classModalOpen, setClassModalOpen]     = useState(false);
-  const [openClass, setOpenClass]               = useState(null);
-  const [addStudentOpen, setAddStudentOpen]     = useState(false);
-  const [openDraft, setOpenDraft]               = useState(null);
-  const [selectedStudent, setSelectedStudent]   = useState(null);
 
   // ── Mobile nav drawer ──────────────────────────────────────
   const [mobileNavOpen, setMobileNavOpen]       = useState(false);
 
-  // ── Derived: active class object ───────────────────────────
+  // ── Derived: classes and subjects from the API ─────────────
+  // Falls back to the first class / subject when the saved choice is gone
+  // (renamed account, deleted subject). Both are null until loaded.
+  const signedIn = !!user;
+  const classesRes = useClasses({ enabled: signedIn });
+  const subjectsRes = useSubjects({ enabled: signedIn });
+
   const classList = useMemo(
     () =>
-      CLASSES.map((c) => ({
+      (classesRes.data ?? []).map((c) => ({
         id: c.id,
         short: c.code,
         name: c.name,
-        subject: "Physics",
-        students: c.students,
+        students: c.studentCount,
       })),
-    []
+    [classesRes.data]
   );
-
   const activeClassObj =
-    classList.find((c) => c.id === activeClassId) || classList[0];
+    classList.find((c) => c.id === activeClassId) || classList[0] || null;
+
+  const classSubjects = useMemo(
+    () => (subjectsRes.data ?? []).filter((s) => s.classId === activeClassObj?.id),
+    [subjectsRes.data, activeClassObj?.id]
+  );
+  const activeSubject =
+    classSubjects.find((s) => s.id === activeSubjectId) || classSubjects[0] || null;
+
+  const scopeLoading =
+    signedIn && (classesRes.isLoading || subjectsRes.isLoading);
+  const scopeError = classesRes.error || subjectsRes.error || null;
 
   const value = useMemo(
     () => ({
-      role, setRole,
+      user, role, signIn, signOut,
       classList, activeClassObj, activeClassId, setActiveClassId,
-      drafts, setDrafts,
+      classSubjects, activeSubject, setActiveSubjectId, scopeLoading, scopeError,
       courses, setCourses,
       courseLessons, setCourseLessons,
       threads, setThreads,
-      rosterOverrides, setRosterOverrides,
       cmdOpen, setCmdOpen,
       confirmState, setConfirmState,
-      previewOpen, setPreviewOpen,
-      accountModalOpen, setAccountModalOpen,
-      classModalOpen, setClassModalOpen,
-      openClass, setOpenClass,
-      addStudentOpen, setAddStudentOpen,
-      openDraft, setOpenDraft,
-      selectedStudent, setSelectedStudent,
       mobileNavOpen, setMobileNavOpen,
     }),
     [
-      role, classList, activeClassObj, activeClassId,
-      drafts, courses, courseLessons, threads, rosterOverrides,
-      cmdOpen, confirmState, previewOpen, accountModalOpen,
-      classModalOpen, openClass, addStudentOpen, openDraft,
-      selectedStudent, mobileNavOpen,
+      user, role, signIn, signOut, classList, activeClassObj, activeClassId,
+      classSubjects, activeSubject, scopeLoading, scopeError,
+      courses, courseLessons, threads,
+      cmdOpen, confirmState, mobileNavOpen,
     ]
   );
 

@@ -1,15 +1,24 @@
 import { cn } from "@/lib/cn";
+import { QUESTION_TYPES } from "@/lib/questions";
 
 // ═══════════════════════════════════════════════════════════════
 // QUESTION MIX BUILDER
 // ═══════════════════════════════════════════════════════════════
-const QUESTION_TYPE_META = {
-  mcq: { label: "Multiple choice", short: "MCQ", defaultMarks: 2, max: 40 },
-  truefalse: { label: "True / false", short: "T/F", defaultMarks: 1, max: 20 },
-  short: { label: "Short answer", short: "Short", defaultMarks: 4, max: 20 },
-  long: { label: "Long answer", short: "Long", defaultMarks: 10, max: 10 },
-  numerical: { label: "Numerical", short: "Num", defaultMarks: 5, max: 15 },
+// Labels come from the shared question schema; only builder-specific
+// defaults (starting marks, max count) live here.
+const BUILDER_DEFAULTS = {
+  mcq: { defaultMarks: 2, max: 40 },
+  truefalse: { defaultMarks: 1, max: 20 },
+  short: { defaultMarks: 4, max: 20 },
+  long: { defaultMarks: 10, max: 10 },
+  numerical: { defaultMarks: 5, max: 15 },
 };
+const QUESTION_TYPE_META = Object.fromEntries(
+  Object.entries(BUILDER_DEFAULTS).map(([type, d]) => [
+    type,
+    { label: QUESTION_TYPES[type].label, short: QUESTION_TYPES[type].short, ...d },
+  ]),
+);
 
 export const QuestionMixBuilder = ({ rows, onChange, targetMarks }) => {
   const totalQuestions = rows.reduce((s, r) => s + r.count, 0);

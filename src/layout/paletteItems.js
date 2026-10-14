@@ -25,7 +25,7 @@ function buildRoleItems(role, navigate) {
   if (role === "student") {
     return [
       nav("home", "Overview", "Home"),
-      nav("take", "Take test", "Active"),
+      nav("take", "Tests", "Take a test"),
       nav("history", "History", "Past tests"),
       nav("lms", "Courses", "LMS"),
       nav("chat", "Discussion", "Chat"),
@@ -74,5 +74,6 @@ export function buildPaletteItems({ role, recentViews, navigate }) {
     });
   }
 
-  return [...recents, ...base];
+  // Items already listed under "Recent" are not repeated under their own section.
+  return [...recents, ...base.filter((it) => !seen.has(it.id))];
 }

@@ -1,5 +1,6 @@
 import { Bento } from "@/components/common";
 import { cn } from "@/lib/cn";
+import { isChoice, typeLabel } from "@/lib/questions";
 
 const ActionBtn = ({ onClick, disabled, label, children }) => (
   <button
@@ -26,7 +27,7 @@ export const QuestionEditor = ({
   onDuplicate,
   onMove,
 }) => {
-  const isMCQ = q.type === "mcq" || q.type === "truefalse";
+  const isMCQ = isChoice(q);
   const isWritten = !isMCQ;
   const updateField = (patch) => onUpdate({ ...q, ...patch });
   const updateOption = (i, val) => {
@@ -43,7 +44,7 @@ export const QuestionEditor = ({
             Q{index + 1}
           </span>
           <span className="text-[12.5px] font-medium text-ink-2">
-            {q.typeLabel}
+            {typeLabel(q.type)}
           </span>
           <span className="rounded-full border border-primary/25 bg-primary-soft px-2 py-0.5 text-[12px] font-medium text-primary">
             {q.topic}
@@ -172,7 +173,7 @@ export const QuestionEditor = ({
               className="w-full min-h-[76px] resize-y rounded-[var(--radius-control)] border border-rule bg-bg px-3 py-2.5 text-[13.5px] leading-relaxed text-ink outline-none transition-all placeholder:text-ink-3 focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           </div>
-          {q.rubric.length > 0 && (
+          {q.rubric?.length > 0 && (
             <div>
               <label className="mb-1.5 block text-[12px] font-semibold text-ink-3">
                 Rubric ({q.rubric.reduce((s, r) => s + r.points, 0)} pts)

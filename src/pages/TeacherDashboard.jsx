@@ -1,6 +1,6 @@
 import { TrendingUp, Target, Users, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { Bento, Conn, MetricCard, SectionHeader } from "@/components/common";
+import { Bento, Conn, MetricCard, Scope, SectionHeader } from "@/components/common";
 import { InteractiveDotPlot } from "@/components/common/charts/InteractiveDotPlot";
 import { Spark } from "@/components/common/charts/Spark";
 import { DiscussionPreview } from "@/components/teacher-dashboard/DiscussionPreview";
@@ -10,6 +10,7 @@ import { useToast } from "@/context/ToastContext";
 import { TOPICS, TREND } from "@/data/analytics";
 import { CLASS_STATS } from "@/data/classes";
 import { GRADE_QUEUE } from "@/data/tests";
+import { useTests } from "@/hooks/useTests";
 import { Badge } from "@/components/ui/badge";
 
 // ═══════════════════════════════════════════════════════════════
@@ -18,6 +19,12 @@ import { Badge } from "@/components/ui/badge";
 const TeacherDashboard = () => {
   const toast = useToast();
   const navigate = useNavigate();
+  const { data: tests } = useTests();
+  // Unpublished and not-yet-open tests, most recently edited first.
+  const recentDrafts = tests
+    .filter((t) => t.status === "draft" || t.status === "scheduled")
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 5);
   const { activeClassObj } = useApp();
   const last = TREND[TREND.length - 1];
   const stats = CLASS_STATS[activeClassObj?.short] || CLASS_STATS["11A"];
@@ -29,14 +36,14 @@ const TeacherDashboard = () => {
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
       <div className="mb-4 flex items-center gap-2 text-[13px] font-medium text-ink-3">
-        {activeClassObj?.subject || "Physics"} · {activeClassObj?.name || "Grade 11 — Section A"}
+        <Scope />
         <span className="text-ink-3">/</span> Overview
       </div>
 
       {/* ── Header: title + live indicator ── */}
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
             Good morning, Dr. Chen
           </h1>
           <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-ink-2">
@@ -136,20 +143,25 @@ const TeacherDashboard = () => {
         <Bento span="sm:col-span-2">
           <SectionHeader label="Recent drafts" action="View all" onAction={() => navigate("/teacher/drafts")} />
           <ul className="-mx-2 flex flex-col">
-            {RECENT_DRAFTS.map((r) => (
-              <li key={r.title}>
+            {recentDrafts.length === 0 && (
+              <li className="px-2 py-3 text-[13px] text-ink-3">
+                No drafts yet — create a test and it will show up here.
+              </li>
+            )}
+            {recentDrafts.map((r) => (
+              <li key={r.id}>
                 <button
                   type="button"
-                  onClick={() => navigate("/teacher/drafts/new")}
+                  onClick={() => navigate(`/teacher/drafts/${r.id}`)}
                   className="group flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-raised"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[14px] font-medium text-ink">{r.title}</div>
                     <div className="mt-0.5 truncate text-[12.5px] text-ink-3">
-                      {r.subject} · {r.questions} questions · {r.marks} marks
+                      {r.subject} · {r.cls} · {r.questions} questions · {r.marks} marks
                     </div>
                   </div>
-                  <Badge variant={r.mode === "Per student" ? "primary" : "neutral"}>{r.mode}</Badge>
+                  <Badge variant={r.mode === "personal" ? "primary" : "neutral"}>{r.mode === "personal" ? "Per student" : "Whole class"}</Badge>
                 </button>
               </li>
             ))}
@@ -157,7 +169,7 @@ const TeacherDashboard = () => {
         </Bento>
 
         <Bento span="sm:col-span-1">
-          <SectionHeader label="Live activity" meta={<Conn state="live" />} />
+          <SectionHeader label="Live activity" aside={<Conn state="live" />} />
           <LiveActivityFeed />
         </Bento>
 
@@ -169,13 +181,5 @@ const TeacherDashboard = () => {
     </div>
   );
 };
-
-const RECENT_DRAFTS = [
-  { title: "Newton's Laws — Unit Test", subject: "Physics · 11A", questions: 12, marks: 40, mode: "Whole class" },
-  { title: "Thermodynamics — Mid-term", subject: "Physics · 11A", questions: 15, marks: 60, mode: "Per student" },
-  { title: "Bonding & Structure", subject: "Chemistry · 11A", questions: 10, marks: 30, mode: "Whole class" },
-  { title: "Kinematics — Quick Quiz", subject: "Physics · 11A", questions: 8, marks: 20, mode: "Whole class" },
-  { title: "Wave Optics — Practice Set", subject: "Physics · 11A", questions: 14, marks: 35, mode: "Per student" },
-];
 
 export default TeacherDashboard;

@@ -7,28 +7,40 @@ import { Button } from "@/components/ui/button";
 // ═══════════════════════════════════════════════════════════════
 // CREATE ACCOUNT MODAL
 // ═══════════════════════════════════════════════════════════════
-export const CreateAccountModal = ({ open, onClose, onCreated }) => {
+export const CreateAccountModal = ({ open, onClose, onCreate, classes = [] }) => {
   const toast = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("Teacher");
-  const [cls, setCls] = useState("");
+  const [role, setRole] = useState("teacher");
+  const [classId, setClassId] = useState("");
+  const [busy, setBusy] = useState(false);
 
   if (!open) return null;
   const reset = () => {
     setName("");
     setEmail("");
-    setRole("Teacher");
-    setCls("");
+    setRole("teacher");
+    setClassId("");
   };
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim() || !email.trim()) {
       toast.push("Name and email are required", "error");
       return;
     }
-    onCreated?.({ name, email, role, cls });
-    reset();
-    onClose();
+    if (role === "student" && !classId) {
+      toast.push("Choose a class for the student", "error");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onCreate?.({ name, email, role, ...(role === "student" ? { classId } : {}) });
+      reset();
+      onClose();
+    } catch (err) {
+      toast.push(err.message || "Couldn't create the account", "error");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -46,6 +58,7 @@ export const CreateAccountModal = ({ open, onClose, onCreated }) => {
           </Button>
           <Button
             onClick={submit}
+            disabled={busy}
           >
             Create account
           </Button>
@@ -77,21 +90,23 @@ export const CreateAccountModal = ({ open, onClose, onCreated }) => {
           onChange={(e) => setRole(e.target.value)}
           className={inputClass}
         >
-          <option>Teacher</option>
-          <option>Student</option>
+          <option value="teacher">Teacher</option>
+          <option value="student">Student</option>
         </select>
       </Field>
-      {role === "Student" && (
+      {role === "student" && (
         <Field label="Class">
           <select
-            value={cls}
-            onChange={(e) => setCls(e.target.value)}
+            value={classId}
+            onChange={(e) => setClassId(e.target.value)}
             className={inputClass}
           >
             <option value="">— Choose a class —</option>
-            <option>Grade 11 — Section A</option>
-            <option>Grade 11 — Section B</option>
-            <option>Grade 10 — Section A</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
           </select>
         </Field>
       )}

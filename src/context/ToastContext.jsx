@@ -58,7 +58,7 @@ const Viewport = ({ toasts, onDismiss }) => {
     <div
       role="region"
       aria-label="Notifications"
-      className="pointer-events-none fixed right-4 bottom-4 z-200 flex max-w-[380px] flex-col gap-2.5 tablet:right-6 tablet:bottom-6"
+      className="pointer-events-none fixed right-4 bottom-4 z-200 flex max-w-[380px] flex-col gap-2.5 max-narrow:left-4 max-narrow:max-w-none tablet:right-6 tablet:bottom-6"
     >
       {toasts.map((t) => {
         const Ico = ICONS[t.type] || Info;

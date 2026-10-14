@@ -58,11 +58,15 @@
   --color-raised:    oklch(0.962 0.006 90);   /* hover / inset */
   --color-overlay:   oklch(0.940 0.007 90);
   --color-sunken:    oklch(0.950 0.007 90);
+  --color-floating:  oklch(1 0 0);            /* popovers, menus, tooltips, modals */
 
   /* ═══ BORDERS — ink-tinted hairlines ═══ */
   --color-rule:      oklch(0.255 0.060 272 / 0.08);
   --color-rule-2:    oklch(0.255 0.060 272 / 0.15);
   --color-rule-3:    oklch(0.255 0.060 272 / 0.24);
+
+  /* Form-field outline. Solid (not alpha) so it holds 3:1 against the field fill (WCAG 1.4.11). */
+  --color-field-border: oklch(0.640 0.030 272);
 
   /* ═══ INK ═══ */
   --color-ink:       oklch(0.255 0.060 272);
@@ -163,7 +167,7 @@
   --color-foreground:           var(--color-ink);
   --color-card:                 var(--color-surface);
   --color-card-foreground:      var(--color-ink);
-  --color-popover:              var(--color-surface);
+  --color-popover:              var(--color-floating);
   --color-popover-foreground:   var(--color-ink);
   --color-primary-foreground:   var(--color-on-primary);
   --color-secondary:            var(--color-raised);
@@ -174,7 +178,7 @@
   --color-accent-foreground:    var(--color-ink);
   --color-destructive:          var(--color-danger);
   --color-border:               var(--color-rule-2);
-  --color-input:                var(--color-rule-3);
+  --color-input:                var(--color-field-border);
   --color-ring:                 var(--color-primary);
 }
 
@@ -182,57 +186,67 @@
 html[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-bg:        oklch(0.165 0.030 272);
-  --color-surface:   oklch(0.205 0.035 272);
-  --color-raised:    oklch(0.245 0.040 272);
-  --color-overlay:   oklch(0.285 0.044 272);
-  --color-sunken:    oklch(0.135 0.028 272);
+  /* DARK PRINCIPLES (see README): tonal near-black (never #000), elevation = lighter
+     surface (not shadow), off-white text, desaturated accents, inputs recessed. */
 
-  --color-rule:      oklch(1 0 0 / 0.07);
+  /* Surface scale — each step ≈ +0.035–0.04 L */
+  --color-sunken:    oklch(0.135 0.028 272);   /* wells, input fields */
+  --color-bg:        oklch(0.165 0.030 272);   /* page */
+  --color-surface:   oklch(0.205 0.034 272);   /* cards */
+  --color-raised:    oklch(0.245 0.038 272);   /* hover, inset */
+  --color-overlay:   oklch(0.285 0.042 272);
+  --color-floating:  oklch(0.285 0.042 272);   /* popovers, menus, tooltips, modals: top of the stack */
+
+  --color-rule:      oklch(1 0 0 / 0.07);      /* chart gridlines + hairlines (6–8% white) */
   --color-rule-2:    oklch(1 0 0 / 0.12);
   --color-rule-3:    oklch(1 0 0 / 0.20);
+  --color-field-border: oklch(0.500 0.030 272);
 
-  --color-ink:       oklch(0.955 0.010 272);
-  --color-ink-2:     oklch(0.790 0.022 272);
-  --color-ink-3:     oklch(0.660 0.030 272);
+  /* Off-white, never #fff: 15.8:1 on cards, ≥5.2:1 for the dimmest text on the top layer */
+  --color-ink:       oklch(0.955 0.008 272);
+  --color-ink-2:     oklch(0.800 0.020 272);
+  --color-ink-3:     oklch(0.690 0.028 272);
   --color-ink-4:     oklch(0.500 0.030 272);
 
-  --color-primary:      oklch(0.740 0.140 272);
-  --color-primary-2:    oklch(0.800 0.130 272);
-  --color-primary-dim:  oklch(0.740 0.140 272 / 0.18);
-  --color-primary-soft: oklch(0.740 0.140 272 / 0.09);
+  /* Desaturated accents (chroma −10–15% vs. the first dark pass) */
+  --color-primary:      oklch(0.740 0.125 272);
+  --color-primary-2:    oklch(0.800 0.115 272);
+  --color-primary-dim:  oklch(0.740 0.125 272 / 0.18);
+  --color-primary-soft: oklch(0.740 0.125 272 / 0.09);
   --color-on-primary:   oklch(0.170 0.030 272);
 
-  --color-success:     oklch(0.770 0.140 158);
-  --color-success-dim: oklch(0.770 0.140 158 / 0.16);
-  --color-warning:     oklch(0.800 0.130 80);
-  --color-warning-dim: oklch(0.800 0.130 80 / 0.16);
-  --color-danger:      oklch(0.730 0.160 25);
-  --color-danger-dim:  oklch(0.730 0.160 25 / 0.16);
+  --color-success:     oklch(0.760 0.120 158);
+  --color-success-dim: oklch(0.760 0.120 158 / 0.16);
+  --color-warning:     oklch(0.800 0.115 80);
+  --color-warning-dim: oklch(0.800 0.115 80 / 0.16);
+  --color-danger:      oklch(0.720 0.140 25);
+  --color-danger-dim:  oklch(0.720 0.140 25 / 0.16);
   --color-on-danger:   oklch(0.170 0.030 272);
 
-  /* Dark tints stay close to the surface: a hint of hue, not a colored slab. */
-  --color-tint-primary: oklch(0.240 0.045 272);
-  --color-tint-success: oklch(0.232 0.030 158);
-  --color-tint-warning: oklch(0.245 0.032 75);
-  --color-tint-danger:  oklch(0.240 0.040 20);
+  /* Dark tints stay within a hair of the card surface (chroma ≤ 0.024 except primary): the hue
+     comes from the icon, delta and a 20% hairline, not from a colored slab. */
+  --color-tint-primary: oklch(0.232 0.036 272);
+  --color-tint-success: oklch(0.222 0.020 158);
+  --color-tint-warning: oklch(0.228 0.024 80);
+  --color-tint-danger:  oklch(0.224 0.024 20);
 
   --color-sidebar-bg:      oklch(0.135 0.045 272);
   --color-sidebar-surface: oklch(0.170 0.050 272);
   --color-sidebar-hover:   oklch(0.205 0.055 272);
   --color-sidebar-active:  oklch(0.250 0.065 272);
 
-  --shadow-card:      0 1px 2px oklch(0 0 0 / 0.30), 0 0 0 1px oklch(1 0 0 / 0.03) inset;
+  --shadow-card:      0 1px 2px oklch(0 0 0 / 0.30), 0 1px 0 oklch(1 0 0 / 0.045) inset;
   --shadow-raised:    0 6px 16px oklch(0 0 0 / 0.38), 0 0 0 1px oklch(1 0 0 / 0.05) inset;
   --shadow-elevated:  0 14px 36px oklch(0 0 0 / 0.46), 0 0 0 1px oklch(1 0 0 / 0.06) inset;
   --shadow-modal:     0 32px 72px oklch(0 0 0 / 0.58), 0 0 0 1px oklch(1 0 0 / 0.07) inset;
-  --shadow-primary:   0 6px 18px oklch(0.740 0.140 272 / 0.26);
-  --shadow-danger:    0 6px 18px oklch(0.730 0.160 25 / 0.26);
-  --shadow-glow:      0 0 0 4px oklch(0.740 0.140 272 / 0.22);
+  --shadow-primary:   0 6px 18px oklch(0.740 0.125 272 / 0.22);
+  --shadow-danger:    0 6px 18px oklch(0.720 0.140 25 / 0.22);
+  --shadow-glow:      0 0 0 4px oklch(0.740 0.125 272 / 0.22);
 }
 
 /* ═══ BASE ═══ */
 @layer base {
+  :root { color-scheme: light; }
   html, body, #root { height: 100%; }
 
   body {
@@ -252,6 +266,15 @@ html[data-theme="dark"] {
     letter-spacing: -0.015em;
     line-height: 1.2;
   }
+
+  /* Touch: no 300ms tap delay / double-tap-zoom on controls, no grey tap flash
+     (custom focus + hover states carry the feedback). */
+  a, button, [role="button"], input, select, textarea, label, summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Respect text-size settings on Android/iOS without breaking layouts. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
   button { font-family: inherit; }
   input, select, textarea { font-family: inherit; }
@@ -280,21 +303,33 @@ html[data-theme="dark"] {
   aside :focus-visible { outline-color: var(--color-gold); }
 }
 
+/* Theme switch: cross-fade via the View Transitions API (see useTheme). Skipped for
+   reduced-motion users in JS; the media query below is the CSS-side guard. */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
 /* ═══ COMPONENTS ═══ */
 @layer components {
-  /* Bento grid: 1 col phones → 2 tablet → 4 desktop. Cards claim territory
-     with col-span / row-span; hierarchy comes from size, not decoration. */
+  /* Bento grid: phones → 2 cols (KPI cards sit 2-up, everything else full width) →
+     640px+ 2 cols → 1024px+ 4 cols. Cards claim territory with col-span / row-span;
+     hierarchy comes from size, not decoration. */
   .bento {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-    grid-auto-rows: minmax(160px, auto);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    grid-auto-rows: auto;
+  }
+  @media (max-width: 639.98px) {
+    .bento > * { grid-column: 1 / -1; }
+    .bento > [data-metric] { grid-column: auto; }
   }
   @media (min-width: 640px) {
     .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   }
   @media (min-width: 1024px) {
-    .bento { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; grid-auto-rows: minmax(180px, auto); }
+    .bento { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; grid-auto-rows: auto; }
   }
   .bento > * { min-width: 0; }
 
@@ -310,7 +345,7 @@ html[data-theme="dark"] {
   /* Floating layers (modals, toasts, command palette): solid surface +
      elevation. No blur — it costs paint time and lowers text contrast. */
   .glass, .glass-strong {
-    background: var(--color-surface);
+    background: var(--color-floating);
     border: 1px solid var(--color-rule-2);
     box-shadow: var(--shadow-modal);
   }

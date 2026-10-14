@@ -1,5 +1,5 @@
 import { TrendingUp, Users, Target } from "lucide-react";
-import { Bento, MetricCard, SectionHeader } from "@/components/common";
+import { Bento, MetricCard, SectionHeader, Scope } from "@/components/common";
 import { SmallMultiple } from "@/components/common/charts/SmallMultiple";
 import { Spark } from "@/components/common/charts/Spark";
 import { Trend } from "@/components/common/charts/Trend";
@@ -17,12 +17,12 @@ export const StudentAnalytics = () => {
   }));
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
-        My progress <span className="text-ink-3">/</span> Physics
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        My progress <span className="text-ink-3">/</span> <Scope />
       </div>
       <div className="mb-8">
-        <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
-          Your progress <span className="text-ink-3">· Physics</span>
+        <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
+          Your progress <span className="text-ink-3">· <Scope /></span>
         </h1>
         <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-ink-2">
           Six tests so far. You started below the class. You finished three points ahead.

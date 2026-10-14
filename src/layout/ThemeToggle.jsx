@@ -16,9 +16,9 @@ export const ThemeToggle = () => {
       onClick={toggleTheme}
       title={label}
       aria-label={label}
-      className="grid size-7 shrink-0 place-items-center rounded-md border border-sidebar-rule text-sidebar-ink-3 transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-sidebar-accent"
+      className="grid size-8 shrink-0 place-items-center rounded-lg border border-sidebar-rule text-sidebar-ink-3 transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-sidebar-accent"
     >
-      {isLight ? <Moon size={14} /> : <Sun size={14} />}
+      {isLight ? <Moon size={15} /> : <Sun size={15} />}
     </button>
   );
 };

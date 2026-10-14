@@ -11,4 +11,5 @@ export const Field = ({ label, hint, children }) => (
 );
 
 // Same look as <Input>; kept as a class string for existing <input>/<select>/<textarea> usages.
-export const inputClass = cn(inputClasses, "py-2.5");
+// min-h (not h) so <textarea> can still grow; 44px floor matches touch-target guidance.
+export const inputClass = cn(inputClasses, "min-h-11 py-2.5 pointer-coarse:min-h-12");

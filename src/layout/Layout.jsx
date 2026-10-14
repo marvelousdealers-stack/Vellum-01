@@ -82,7 +82,6 @@ export const Layout = () => {
         role={role}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
-        onSearch={() => setCmdOpen(true)}
       />
 
       <main id="main" ref={mainRef} tabIndex={-1} className="min-h-dvh min-w-0 overflow-x-clip outline-none">

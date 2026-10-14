@@ -67,7 +67,7 @@ export const CommandPalette = ({ open, onClose, items, onSelect }) => {
 
   return (
     <div
-      className="fixed inset-0 z-400 flex animate-fade-in items-start justify-center bg-[oklch(0.15_0.06_272_/_0.55)] p-6 pt-[12vh] backdrop-blur-md"
+      className="fixed inset-0 z-400 flex animate-fade-in items-start justify-center bg-[oklch(0.15_0.06_272_/_0.55)] p-4 pt-[10vh] backdrop-blur-md narrow:p-6 narrow:pt-[12vh]"
       onClick={onClose}
     >
       <div
@@ -75,7 +75,7 @@ export const CommandPalette = ({ open, onClose, items, onSelect }) => {
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="glass-strong flex max-h-[60vh] w-full max-w-[560px] animate-cmd-in flex-col overflow-hidden rounded-[var(--radius-modal)] shadow-[var(--shadow-modal)]"
+        className="glass-strong flex max-h-[70dvh] w-full max-w-[560px] animate-cmd-in flex-col overflow-hidden rounded-[var(--radius-modal)] shadow-[var(--shadow-modal)]"
       >
         <div className="flex items-center gap-3 border-b border-rule px-5 py-4 text-ink-3">
           <SearchIcon size={16} />
@@ -84,14 +84,22 @@ export const CommandPalette = ({ open, onClose, items, onSelect }) => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search pages, actions…"
-            className="flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-3"
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-3 pointer-coarse:text-[16px]"
           />
-          <kbd className="rounded border border-rule-2 bg-raised px-1.5 py-0.5 font-mono text-[12px] font-semibold text-ink-2">
+          <kbd className="rounded border border-rule-2 bg-raised px-1.5 py-0.5 font-mono text-[12px] font-semibold text-ink-2 pointer-coarse:hidden">
             ESC
           </kbd>
+          {/* Touch screens have no Esc key: a real close control instead. */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="hidden h-9 items-center rounded-lg px-2 text-[13px] font-semibold text-primary pointer-coarse:inline-flex"
+          >
+            Close
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-2">
+        <div className="flex-1 overflow-y-auto overscroll-contain py-2">
           {filtered.length === 0 && (
             <div className="px-5 py-12 text-center text-[13.5px] text-ink-3">
               No results for "{query}"
@@ -115,7 +123,7 @@ export const CommandPalette = ({ open, onClose, items, onSelect }) => {
                       onClose();
                     }}
                     className={cn(
-                      "flex w-full items-center gap-3 px-5 py-2.5 text-left text-[14px] transition-colors",
+                      "flex w-full items-center gap-3 px-5 py-2.5 text-left text-[14px] transition-colors pointer-coarse:py-3.5",
                       isActive
                         ? "border-l-2 border-primary bg-raised/70 pl-[18px] text-ink"
                         : "text-ink-2 hover:bg-raised/50 hover:text-ink",
@@ -146,7 +154,7 @@ export const CommandPalette = ({ open, onClose, items, onSelect }) => {
           ))}
         </div>
 
-        <div className="flex gap-4 border-t border-rule px-5 py-2.5 font-mono text-[12px] text-ink-3">
+        <div className="flex gap-4 border-t border-rule px-5 py-2.5 font-mono text-[12px] text-ink-3 pointer-coarse:hidden">
           <span>
             <kbd className="rounded border border-rule-2 bg-raised px-1 py-0.5 text-[12px]">
               ↑

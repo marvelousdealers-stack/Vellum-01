@@ -1,13 +1,5 @@
 import { Download, TrendingUp, Users, Target } from "lucide-react";
-import {
-  Bento,
-  MetricCard,
-  SectionHeader,
-  StatusDot,
-  TableShell,
-  Td,
-  Th,
-} from "@/components/common";
+import { Bento, MetricCard, SectionHeader, StatusDot, TableShell, Td, Th, Scope } from "@/components/common";
 import { SmallMultiple } from "@/components/common/charts/SmallMultiple";
 import { Trend } from "@/components/common/charts/Trend";
 import { useToast } from "@/context/ToastContext";
@@ -38,14 +30,14 @@ export const StudentProfile = ({ student, onBack }) => {
         ← Back to analytics
       </Button>
 
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
-        Physics · Grade 11A <span className="text-ink-3">/</span> Students{" "}
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        <Scope /> <span className="text-ink-3">/</span> Students{" "}
         <span className="text-ink-3">/</span> {student.name}
       </div>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
             {student.name} <span className="text-ink-3">· 11A</span>
           </h1>
           <p className="mt-2 max-w-[680px] text-[14px] leading-relaxed text-ink-2">

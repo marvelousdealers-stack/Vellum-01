@@ -1,10 +1,11 @@
 import { useState, useMemo, Fragment } from "react";
 import { CheckCircle2, AlertTriangle, Flag, Search as SearchIcon } from "lucide-react";
-import { Chip, FilterButton, MetricCard, StatusDot, TableShell, Td, Th } from "@/components/common";
+import { Chip, FilterButton, MetricCard, PageError, PageLoading, StatusDot, TableShell, Td, Th, Scope } from "@/components/common";
 import { GradingDetailPanel } from "@/components/teacher-grade-review/GradingDetailPanel";
 import { ManualGradingQueue } from "@/components/teacher-grade-review/ManualGradingQueue";
 import { useToast } from "@/context/ToastContext";
-import { GRADE_QUEUE } from "@/data/tests";
+import { approveGrades, reviewGrade } from "@/api/grades";
+import { useGradeQueue } from "@/hooks/useGrading";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,11 @@ const CONF_LABEL = { low: "Low", med: "Medium", high: "High" };
 
 const TeacherGradeReview = () => {
   const toast = useToast();
-  const [aiOn, setAiOn] = useState(true);
+  const [view, setView] = useState("review"); // "review" (AI drafts) | "manual"
+  const { data: queue = [], isLoading, error, refetch } = useGradeQueue();
+  const aiItems = useMemo(() => queue.filter((g) => !g.manual), [queue]);
+  const manualItems = useMemo(() => queue.filter((g) => g.manual), [queue]);
+  const manualPending = manualItems.filter((g) => g.status !== "reviewed").length;
   const [search, setSearch] = usePersistentState(
     "vellum.gradeReview.search",
     "",
@@ -37,14 +42,12 @@ const TeacherGradeReview = () => {
     "question",
   );
   const [expanded, setExpanded] = useState(null);
-  const [overrides, setOverrides] = useState({});
-  const [remarks, setRemarks] = useState({});
-  const [reviewedIds, setReviewedIds] = useState(() => new Set());
+  const [approving, setApproving] = useState(false);
 
-  const isReviewed = (g) => reviewedIds.has(g.id) || g.status === "reviewed";
+  const isReviewed = (g) => g.status === "reviewed";
 
   const filtered = useMemo(() => {
-    let rows = [...GRADE_QUEUE];
+    let rows = [...aiItems];
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       rows = rows.filter(
@@ -68,8 +71,8 @@ const TeacherGradeReview = () => {
         va = a.student;
         vb = b.student;
       } else if (sortBy === "score") {
-        va = a.aiScore;
-        vb = b.aiScore;
+        va = a.score;
+        vb = b.score;
       } else {
         va = a.test;
         vb = b.test;
@@ -79,7 +82,7 @@ const TeacherGradeReview = () => {
       return sortDir === "asc" ? va - vb : vb - va;
     });
     return rows;
-  }, [search, filter, sortBy, sortDir, reviewedIds]);
+  }, [aiItems, search, filter, sortBy, sortDir]);
 
   const groupedRows = useMemo(() => {
     if (groupBy !== "student") return null;
@@ -98,10 +101,7 @@ const TeacherGradeReview = () => {
       map.get(key).rows.push(g);
     });
     return [...map.values()].map((grp) => {
-      const totalScore = grp.rows.reduce(
-        (s, r) => s + (overrides[r.id] ?? r.aiScore),
-        0,
-      );
+      const totalScore = grp.rows.reduce((s, r) => s + (r.score ?? 0), 0);
       const totalMax = grp.rows.reduce((s, r) => s + r.maxScore, 0);
       const totalFlags = grp.rows.reduce((s, r) => s + r.flags, 0);
       const worstConfidence = grp.rows.reduce(
@@ -120,62 +120,99 @@ const TeacherGradeReview = () => {
         allReviewed: reviewedCount === grp.rows.length,
       };
     });
-  }, [filtered, groupBy, overrides, reviewedIds]);
+  }, [filtered, groupBy]);
 
-  const pendingTotal = GRADE_QUEUE.filter((g) => !isReviewed(g)).length;
-  const lowTotal = GRADE_QUEUE.filter((g) => g.confidence === "low").length;
-  const reviewedTotal = GRADE_QUEUE.filter(isReviewed).length;
-  const flaggedTotal = GRADE_QUEUE.filter((g) => g.flags > 0).length;
-  const progressPct = Math.round((reviewedTotal / GRADE_QUEUE.length) * 100);
+  const pendingTotal = aiItems.filter((g) => !isReviewed(g)).length;
+  const lowTotal = aiItems.filter((g) => g.confidence === "low" && !isReviewed(g)).length;
+  const reviewedTotal = aiItems.filter(isReviewed).length;
+  const flaggedTotal = aiItems.filter((g) => g.flags > 0 && !isReviewed(g)).length;
+  const progressPct = aiItems.length ? Math.round((reviewedTotal / aiItems.length) * 100) : 0;
+  const testCount = new Set(aiItems.map((g) => g.testId)).size;
+  const approvable = aiItems.filter((g) => g.status === "pending" && g.confidence === "high");
 
-  const handleSave = (g, score, remark) => {
-    setOverrides((prev) => ({ ...prev, [g.id]: score }));
-    if (remark) setRemarks((prev) => ({ ...prev, [g.id]: remark }));
-    setReviewedIds((prev) => new Set(prev).add(g.id));
-    setExpanded(null);
+  // Saves one mark. Throws are shown as a toast and re-thrown so a panel
+  // keeps its inputs instead of closing.
+  const saveMark = async (g, marks, remark, final = true) => {
+    try {
+      await reviewGrade(g.attemptId, g.questionId, { marks, feedback: remark, final });
+      toast.push(
+        final ? `${g.student} graded at ${marks} / ${g.maxScore}` : "Saved as a draft",
+        final ? "success" : "info",
+      );
+      return true;
+    } catch (err) {
+      toast.push(err?.message || "Couldn't save that mark — try again", "error");
+      return false;
+    }
   };
-  const handleSaveGrouped = (g, score, remark) => {
-    setOverrides((prev) => ({ ...prev, [g.id]: score }));
-    if (remark) setRemarks((prev) => ({ ...prev, [g.id]: remark }));
-    setReviewedIds((prev) => new Set(prev).add(g.id));
+  const handleSave = async (g, score, remark, final) => {
+    if ((await saveMark(g, score, remark, final)) && final) setExpanded(null);
   };
+  const handleSaveGrouped = (g, score, remark, final) => saveMark(g, score, remark, final);
+
+  const bulkApprove = async () => {
+    setApproving(true);
+    try {
+      const { approved } = await approveGrades(
+        approvable.map((g) => ({ attemptId: g.attemptId, questionId: g.questionId })),
+      );
+      toast.push(`Approved ${approved} high-confidence ${approved === 1 ? "grade" : "grades"}`, "success");
+    } catch (err) {
+      toast.push(err?.message || "Couldn't approve — try again", "error");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  if (isLoading) return <PageLoading />;
+  if (error) return <PageError error={error} onRetry={refetch} />;
 
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
-        Physics · Grade 11A <span className="text-ink-3">/</span> Grade review
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        <Scope /> <span className="text-ink-3">/</span> Grade review
       </div>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
             Review <span className="text-ink-3">grades</span>
           </h1>
           <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-ink-2">
-            {aiOn
-              ? `${pendingTotal} submissions awaiting review across ${new Set(GRADE_QUEUE.map((g) => g.test)).size} tests.`
-              : "AI grading is off. Written answers are going straight to your manual queue."}
+            {view === "review"
+              ? aiItems.length === 0
+                ? "No AI-graded answers yet. They appear here once students submit."
+                : `${pendingTotal} AI-graded ${pendingTotal === 1 ? "answer" : "answers"} awaiting your review across ${testCount} ${testCount === 1 ? "test" : "tests"}. Students only see a mark once you've approved it.`
+              : "These tests have AI grading off, so every written answer waits here for your mark."}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="text-[12px] font-medium text-ink-3">AI grading</span>
-          <button
-            onClick={() => setAiOn(!aiOn)}
-            className={cn(
-              "rounded-[var(--radius-control)] border px-3.5 py-1.5 text-[12.5px] font-semibold transition-all duration-200",
-              aiOn
-                ? "border-primary bg-primary text-on-primary shadow-[var(--shadow-primary)]"
-                : "border-rule-2 text-ink-2 hover:border-rule-3 hover:bg-raised hover:text-ink",
-            )}
-          >
-            {aiOn ? "On" : "Off · manual queue"}
-          </button>
+          {[
+            ["review", "AI-graded"],
+            ["manual", `Manual queue${manualPending ? ` (${manualPending})` : ""}`],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => {
+                setView(id);
+                setExpanded(null);
+              }}
+              className={cn(
+                "rounded-[var(--radius-control)] border px-3.5 py-1.5 text-[12.5px] font-semibold transition-all duration-200",
+                view === id
+                  ? "border-primary bg-primary text-on-primary shadow-[var(--shadow-primary)]"
+                  : "border-rule-2 text-ink-2 hover:border-rule-3 hover:bg-raised hover:text-ink",
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {!aiOn && <ManualGradingQueue onEnableAI={() => setAiOn(true)} />}
+      {view === "manual" && <ManualGradingQueue items={manualItems} onSave={saveMark} />}
 
-      {aiOn && (
+      {view === "review" && (
         <>
           <div className="bento mb-8">
             <MetricCard
@@ -183,7 +220,7 @@ const TeacherGradeReview = () => {
               iconTone={pendingTotal > 0 ? "warning" : "success"}
               label="Pending review"
               value={pendingTotal}
-              delta={`Across ${new Set(GRADE_QUEUE.map((g) => g.test)).size} tests`}
+              delta={`Across ${testCount} ${testCount === 1 ? "test" : "tests"}`}
               deltaTone="success"
             />
             <MetricCard
@@ -206,7 +243,7 @@ const TeacherGradeReview = () => {
               icon={CheckCircle2}
               iconTone="primary"
               label="Reviewed"
-              value={`${reviewedTotal}/${GRADE_QUEUE.length}`}
+              value={`${reviewedTotal}/${aiItems.length}`}
               delta={`${progressPct}% complete`}
               deltaTone="success"
             />
@@ -247,7 +284,7 @@ const TeacherGradeReview = () => {
               onClick={() => {}}
             />
 
-            <div className="ml-auto flex items-center gap-3 font-mono text-[12px] font-medium text-ink-3">
+            <div className="ml-auto flex items-center gap-3 text-[13px] font-medium text-ink-3">
               <span>{progressPct}% reviewed</span>
               <div className="h-1.5 w-[100px] overflow-hidden rounded-full bg-rule">
                 <div
@@ -334,20 +371,9 @@ const TeacherGradeReview = () => {
               {groupBy === "question" &&
                 filtered.map((g) => {
                   const isOpen = expanded === g.id;
-                  const displayedScore = overrides[g.id] ?? g.aiScore;
-                  const status = isReviewed(g) ? "reviewed" : g.status;
-                  const tone =
-                    status === "reviewed"
-                      ? "success"
-                      : status === "flagged"
-                        ? "danger"
-                        : "warning";
-                  const label =
-                    status === "reviewed"
-                      ? "Reviewed"
-                      : status === "flagged"
-                        ? "Flagged"
-                        : "Pending";
+                  const displayedScore = g.score;
+                  const tone = isReviewed(g) ? "success" : "warning";
+                  const label = isReviewed(g) ? "Reviewed" : "Pending";
                   return (
                     <Fragment key={g.id}>
                       <tr
@@ -402,8 +428,8 @@ const TeacherGradeReview = () => {
                             <GradingDetailPanel
                               g={g}
                               onClose={() => setExpanded(null)}
-                              onSave={(score, remark) =>
-                                handleSave(g, score, remark)
+                              onSave={(score, remark, final) =>
+                                handleSave(g, score, remark, final)
                               }
                             />
                           </td>
@@ -493,8 +519,8 @@ const TeacherGradeReview = () => {
                                     g={g}
                                     showClose={false}
                                     onClose={() => {}}
-                                    onSave={(score, remark) =>
-                                      handleSaveGrouped(g, score, remark)
+                                    onSave={(score, remark, final) =>
+                                      handleSaveGrouped(g, score, remark, final)
                                     }
                                   />
                                 </div>
@@ -517,23 +543,14 @@ const TeacherGradeReview = () => {
           </TableShell>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            <Button
-              onClick={() =>
-                toast.push("Bulk approved 6 high-confidence grades", "success")
-              }
-            >
-              Bulk approve high confidence
+            <Button onClick={bulkApprove} disabled={approving || approvable.length === 0}>
+              {approving
+                ? "Approving…"
+                : `Approve ${approvable.length} high-confidence ${approvable.length === 1 ? "grade" : "grades"}`}
             </Button>
-            <Button
-              onClick={() =>
-                toast.push("Results released — 32 students notified", "success")
-              } variant="outline"
-            >
-              Release results to students
-            </Button>
-            <Button variant="ghost">
-              Download marked PDF
-            </Button>
+            <span className="self-center text-[12.5px] text-ink-3">
+              When students see results depends on each test's release setting.
+            </span>
           </div>
         </>
       )}

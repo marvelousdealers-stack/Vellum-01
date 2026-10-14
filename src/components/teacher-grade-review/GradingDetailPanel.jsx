@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Sparkles } from "lucide-react";
-import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 
@@ -44,17 +43,32 @@ export const GradingDetailPanel = ({
   onSave,
   showClose = true,
 }) => {
-  const toast = useToast();
-  const [score, setScore] = useState(g.aiScore);
-  const [remark, setRemark] = useState("");
+  const [score, setScore] = useState(g.score ?? "");
+  const [remark, setRemark] = useState(g.feedback ?? "");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setScore(g.aiScore);
-    setRemark("");
-  }, [g.id, g.aiScore]);
+    setScore(g.score ?? "");
+    setRemark(g.feedback ?? "");
+  }, [g.id, g.score, g.feedback]);
 
-  const verdicts = buildRubricVerdict(Number(score) || 0, g.maxScore);
-  const changed = score !== g.aiScore;
+  // Real rubric verdicts from the grader when there are any; otherwise a
+  // rough estimate from the mark.
+  const verdicts = g.rubric?.length
+    ? g.rubric.map((r) => ({
+        label: r.label,
+        verdict: r.awarded >= r.points ? "pass" : r.awarded > 0 ? "partial" : "fail",
+      }))
+    : buildRubricVerdict(Number(g.aiScore ?? g.score) || 0, g.maxScore);
+  const changed = g.aiScore != null && Number(score) !== g.aiScore;
+  const save = async (final) => {
+    setBusy(true);
+    try {
+      await onSave?.(score === "" ? null : Number(score), remark, final);
+    } finally {
+      setBusy(false);
+    }
+  };
   const conf = CONFIDENCE_TONE[g.confidence] || CONFIDENCE_TONE.high;
 
   return (
@@ -74,15 +88,17 @@ export const GradingDetailPanel = ({
               <span className="font-mono">{g.date}</span>
             </div>
           </div>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] font-semibold",
-              conf.cls,
-            )}
-          >
-            <span className="size-1.5 rounded-full bg-current" />
-            {conf.label} confidence
-          </span>
+          {g.confidence && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[12px] font-semibold",
+                conf.cls,
+              )}
+            >
+              <span className="size-1.5 rounded-full bg-current" />
+              {conf.label} confidence
+            </span>
+          )}
         </div>
 
         {/* Question */}
@@ -102,8 +118,13 @@ export const GradingDetailPanel = ({
               Student's answer
             </div>
             <div className="break-words font-display text-[15px] leading-relaxed text-ink">
-              {g.answer}
+              {g.answer || <span className="text-ink-3">(No answer given)</span>}
             </div>
+            {g.flags > 0 && (
+              <div className="mt-3 text-[12px] font-medium text-warning">
+                {g.flags} tab {g.flags === 1 ? "switch" : "switches"} during this test
+              </div>
+            )}
           </div>
 
           <div className="min-w-0 rounded-[var(--radius-container)] border border-primary/25 bg-primary-soft px-5 py-4">
@@ -147,9 +168,9 @@ export const GradingDetailPanel = ({
               ))}
             </ul>
             <div className="mt-3 border-t border-primary/15 pt-3 text-[12px] italic leading-relaxed text-ink-3">
-              Suggested {g.aiScore} / {g.maxScore} based on{" "}
-              {verdicts.filter((v) => v.verdict === "pass").length} of 4 rubric
-              items fully met.
+              {g.aiScore != null ? `Suggested ${g.aiScore} / ${g.maxScore} — ` : ""}
+              {verdicts.filter((v) => v.verdict === "pass").length} of {verdicts.length}{" "}
+              rubric items fully met.
             </div>
           </div>
         </div>
@@ -162,7 +183,7 @@ export const GradingDetailPanel = ({
             </span>
             {changed && (
               <span className="rounded-full border border-primary/25 bg-primary-soft px-2 py-0.5 text-[12px] font-semibold text-primary">
-                Overridden (was {g.aiScore})
+                Overridden (AI suggested {g.aiScore})
               </span>
             )}
           </div>
@@ -210,23 +231,10 @@ export const GradingDetailPanel = ({
             <span />
           )}
           <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() => {
-                toast.push("Saved without releasing", "info");
-                onSave?.(score, remark);
-              }} variant="outline"
-            >
-              Save without releasing
+            <Button onClick={() => save(false)} disabled={busy || score === ""} variant="outline">
+              Save as draft
             </Button>
-            <Button
-              onClick={() => {
-                toast.push(
-                  `${g.student} graded at ${score} / ${g.maxScore}`,
-                  "success",
-                );
-                onSave?.(score, remark);
-              }}
-            >
+            <Button onClick={() => save(true)} disabled={busy || score === ""}>
               Accept &amp; continue
             </Button>
           </div>

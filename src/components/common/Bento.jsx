@@ -7,10 +7,10 @@ import { cn } from "@/lib/cn";
 //   quiet    — no border, surface fill only (for dense grids)
 //   tinted   — pastel fill chosen by `tone` (WeHR-style KPI cards)
 const TONE_FILL = {
-  primary: "bg-tint-primary",
-  success: "bg-tint-success",
-  warning: "bg-tint-warning",
-  danger: "bg-tint-danger",
+  primary: "bg-tint-primary dark:border-primary/20",
+  success: "bg-tint-success dark:border-success/20",
+  warning: "bg-tint-warning dark:border-warning/20",
+  danger: "bg-tint-danger dark:border-danger/20",
   neutral: "bg-surface border-rule",
 };
 

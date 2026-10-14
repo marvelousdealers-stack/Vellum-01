@@ -6,7 +6,7 @@ export const MobileTopBar = ({ onMenuToggle, onSearch, showSearch = true }) => (
     <button
       onClick={onMenuToggle}
       aria-label="Open navigation menu"
-      className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-rule-2 bg-surface text-ink-2 transition-colors hover:bg-raised hover:text-ink active:scale-95"
+      className="grid size-11 shrink-0 place-items-center rounded-[10px] border border-rule-2 bg-surface text-ink-2 transition-colors hover:bg-raised hover:text-ink active:scale-95"
     >
       <Menu size={18} />
     </button>
@@ -19,7 +19,7 @@ export const MobileTopBar = ({ onMenuToggle, onSearch, showSearch = true }) => (
       <button
         onClick={onSearch}
         aria-label="Search"
-        className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-rule-2 bg-surface text-ink-2 transition-colors hover:bg-raised hover:text-ink"
+        className="grid size-11 shrink-0 place-items-center rounded-[10px] border border-rule-2 bg-surface text-ink-2 transition-colors hover:bg-raised hover:text-ink"
       >
         <Search size={16} />
       </button>

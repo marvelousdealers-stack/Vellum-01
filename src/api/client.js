@@ -1,52 +1,94 @@
 // Central place every backend call goes through.
 //
-// While there's no backend yet, MOCK_MODE stays true and every api/*.js
-// module returns local mock data instead of calling fetch. Nothing outside
-// this file needs to know that — components call e.g. `api.classes.list()`
-// either way. When the real backend is ready, flip MOCK_MODE (or wire it to
-// an env var) and fill in the fetch calls below; component code doesn't
-// change.
+// The app only ever talks HTTP. While there is no backend, src/mocks installs
+// a fake server in front of `fetch` (see src/mocks/README.md); set
+// VITE_USE_MOCK=false to talk to the real one. No api/*.js module or
+// component knows or cares which it is.
 //
-// Keeping every network call behind one wrapper — rather than scattering
-// fetch() calls through components — is what makes it realistic to add
-// auth headers, retry, or error handling in one place later. This mirrors
-// the guide's own advice for the AI-calling code on the backend: isolate
-// anything that talks to an outside system so swapping it out later means
-// changing one small area, not the whole app.
-export const MOCK_MODE = true;
+// What a backend has to match is written down in API-CONTRACT.md. Two
+// conventions are handled here and in api/wire.js so the rest of the app can
+// stay simple:
+//   · ids may arrive as `_id` (MongoDB) → normalised to `id`
+//   · dates travel as ISO-8601 strings → converted to ms timestamps
+import { invalidate } from "./cache";
+import { fromWire, toWire } from "./wire";
 
-const BASE_URL = import.meta.env?.VITE_API_BASE_URL || "/api";
+/** True while the built-in fake server is answering requests (bootstrap + login screen only). */
+export const USE_MOCK = import.meta.env?.VITE_USE_MOCK !== "false";
 
-// Simulates realistic network latency for mock responses, so loading
-// states get exercised during frontend-only development instead of
-// resolving instantly every time.
-export const mockDelay = (ms = 400 + Math.random() * 400) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+export const BASE_URL = import.meta.env?.VITE_API_BASE_URL || "/api";
+const TOKEN_KEY = "authToken";
 
-class ApiError extends Error {
-  constructor(message, status, body) {
+/**
+ * Every failed request throws this. `status` is the HTTP status (0 for a
+ * network failure), `code` is the backend's machine-readable reason when it
+ * sends one (e.g. "NOT_RELEASED"), `message` is safe to show a user.
+ */
+export class ApiError extends Error {
+  constructor(message, { status = 0, code = null, body = null } = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
     this.body = body;
   }
 }
 
-// Attach the login token (once real auth exists) and normalize error
-// handling. Not used yet while MOCK_MODE is true, but every api/*.js
-// module is already written to call this, so turning MOCK_MODE off is a
-// one-line change plus whatever real endpoints replace the mocks.
-export const request = async (path, { method = "GET", body, headers } = {}) => {
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      ...(body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+export const getAuthToken = () => {
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+};
+export const setAuthToken = (token) => {
+  try {
+    if (token) window.localStorage.setItem(TOKEN_KEY, token);
+    else window.localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage unavailable — the session just won't persist */
+  }
+};
+
+// Auth code registers one handler (e.g. "clear session, go to /login") and
+// every 401 from any endpoint ends up there.
+let unauthorizedHandler = null;
+export const onUnauthorized = (fn) => {
+  unauthorizedHandler = fn;
+};
+
+const toQuery = (params) => {
+  const q = new URLSearchParams();
+  Object.entries(params ?? {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
   });
+  const s = q.toString();
+  return s ? `?${s}` : "";
+};
+
+export const request = async (path, { method = "GET", body, headers, params } = {}) => {
+  const token = getAuthToken();
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${path}${toQuery(params)}`, {
+      method,
+      headers: {
+        Accept: "application/json",
+        ...(body instanceof FormData || body === undefined
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      body:
+        body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError("Can't reach the server — check your connection and try again.", {
+      status: 0,
+      code: "NETWORK",
+    });
+  }
 
   let data = null;
   try {
@@ -56,7 +98,31 @@ export const request = async (path, { method = "GET", body, headers } = {}) => {
   }
 
   if (!res.ok) {
-    throw new ApiError(data?.message || res.statusText, res.status, data);
+    if (res.status === 401) unauthorizedHandler?.();
+    throw new ApiError(data?.message || res.statusText || "Request failed", {
+      status: res.status,
+      code: data?.code ?? null,
+      body: data,
+    });
   }
   return data;
+};
+
+/**
+ * request() plus the two conventions every module needs: the body is
+ * converted to wire format and the response back to UI format (api/wire.js),
+ * and after a successful write the listed cache keys are refreshed.
+ *
+ *   call("/tests/1/publish", { method: "POST", body, invalidates: [["tests"]] })
+ *
+ * Reads inside hooks use it without `invalidates`.
+ */
+export const call = async (path, { method = "GET", body, params, invalidates = [] } = {}) => {
+  const res = await request(path, {
+    method,
+    params,
+    body: body === undefined ? undefined : toWire(body),
+  });
+  invalidates.forEach((key) => invalidate(key));
+  return res == null ? res : fromWire(res);
 };

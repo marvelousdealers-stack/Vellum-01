@@ -2,18 +2,14 @@
 // Sets BOTH:
 //   · data-theme attribute — read by the token overrides in styles/index.css
 //   · .dark / .light class — read by Tailwind's dark: / light: variants
-// Uses the same localStorage key + fallback as hooks/useTheme.js.
+// Same rule as hooks/useTheme.js and the inline script in index.html.
 export function bootstrapTheme() {
   const root = document.documentElement;
   try {
     const raw = window.localStorage.getItem("vellum.theme");
     const stored = raw != null ? JSON.parse(raw) : null;
-    const theme =
-      stored === "light" || stored === "dark"
-        ? stored
-        : window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
+    // Light is the default; the OS preference is ignored. Dark is opt-in.
+    const theme = stored === "dark" ? "dark" : "light";
     root.setAttribute("data-theme", theme);
     root.classList.toggle("dark", theme === "dark");
     root.classList.toggle("light", theme === "light");

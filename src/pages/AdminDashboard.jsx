@@ -1,22 +1,44 @@
 import { Users, GraduationCap, Layers, BookOpen, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
-import { AnimatedNumber, Bento, MetricCard, SectionHeader } from "@/components/common";
-import { CLASSES } from "@/data/classes";
+import { AnimatedNumber, Bento, MetricCard, PageError, PageLoading, SectionHeader } from "@/components/common";
+import { useUsers } from "@/hooks/useAdmin";
+import { useClasses, useSubjects } from "@/hooks/useSubjects";
 
 // ═══════════════════════════════════════════════════════════════
 // ADMIN HOME
 // ═══════════════════════════════════════════════════════════════
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const usersRes = useUsers();
+  const classesRes = useClasses();
+  const subjectsRes = useSubjects();
+
+  if (usersRes.isLoading || classesRes.isLoading || subjectsRes.isLoading) return <PageLoading />;
+  const loadError = usersRes.error || classesRes.error || subjectsRes.error;
+  if (loadError) {
+    return (
+      <PageError
+        error={loadError}
+        onRetry={() => { usersRes.refetch(); classesRes.refetch(); subjectsRes.refetch(); }}
+      />
+    );
+  }
+  const users = usersRes.data ?? [];
+  const classes = classesRes.data ?? [];
+  const teachers = users.filter((u) => u.role === "teacher");
+  const students = users.filter((u) => u.role === "student");
+  const inactive = (list) => list.filter((u) => !u.active).length;
+  const unassigned = students.filter((u) => !u.classId).length;
+  const delta = (n, word) => (n ? `${n} ${word}` : "All active");
 
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
         Administration <span className="text-ink-3">/</span> Overview
       </div>
 
       <div className="mb-8">
-        <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+        <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
           Institution <span className="text-ink-3">setup</span>
         </h1>
         <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-ink-2">
@@ -27,51 +49,55 @@ const AdminDashboard = () => {
 
       <div className="bento mb-14">
         <MetricCard
+          tinted={false}
           icon={Users}
           iconTone="primary"
           label="Teachers"
-          value={<AnimatedNumber value={3} duration={700} />}
-          delta="Active"
-          deltaTone="success"
+          value={<AnimatedNumber value={teachers.length} duration={700} />}
+          delta={delta(inactive(teachers), "inactive")}
+          deltaTone={inactive(teachers) ? "warning" : "success"}
         />
         <MetricCard
+          tinted={false}
           icon={GraduationCap}
-          iconTone="success"
+          iconTone="primary"
           label="Students"
-          value={<AnimatedNumber value={90} duration={900} />}
-          delta="+6 this term"
-          deltaTone="success"
+          value={<AnimatedNumber value={students.length} duration={900} />}
+          delta={unassigned ? `${unassigned} without a class` : delta(inactive(students), "inactive")}
+          deltaTone={unassigned || inactive(students) ? "warning" : "success"}
         />
         <MetricCard
+          tinted={false}
           icon={Layers}
-          iconTone="warning"
+          iconTone="primary"
           label="Classes"
-          value={<AnimatedNumber value={3} duration={700} />}
-          delta="3 active"
-          deltaTone="success"
+          value={<AnimatedNumber value={classes.length} duration={700} />}
+          delta={`${classes.filter((c) => c.teachers.length === 0).length || "All"} ${classes.some((c) => c.teachers.length === 0) ? "without a teacher" : "have a teacher"}`}
+          deltaTone="neutral"
         />
         <MetricCard
+          tinted={false}
           icon={BookOpen}
-          iconTone="neutral"
+          iconTone="primary"
           label="Subjects"
-          value={<AnimatedNumber value={9} duration={800} />}
-          delta="Across all grades"
-          deltaTone="success"
+          value={<AnimatedNumber value={(subjectsRes.data ?? []).length} duration={800} />}
+          delta="Across all classes"
+          deltaTone="neutral"
         />
       </div>
 
       <section>
         <SectionHeader
-          label="Classes · 3 active"
+          label={`Classes · ${classes.length}`}
           action="Manage →"
           onAction={() => navigate("/admin/classes")}
         />
-        <div className="grid gap-3 tablet:grid-cols-2 lg:grid-cols-3">
-          {CLASSES.map((c) => (
+        <div className="grid gap-4 tablet:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+          {classes.map((c) => (
             <Bento
               as="button"
               key={c.id}
-              onClick={() => navigate("/admin/classes")}
+              onClick={() => navigate(`/admin/classes/${c.id}`)}
               className="group cursor-pointer text-left hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)]"
             >
               <div className="flex items-start justify-between gap-3">
@@ -89,17 +115,17 @@ const AdminDashboard = () => {
                   {c.name}
                 </div>
                 <div className="mt-1 text-[12.5px] text-ink-3">
-                  {c.subjects} subjects · {c.students} students
+                  {c.subjectCount} subjects · {c.studentCount} students
                 </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {c.teachers.map((t) => (
                   <span
-                    key={t}
+                    key={t.id}
                     className="rounded-full border border-rule-2 bg-surface/60 px-2 py-0.5 text-[12px] font-medium text-ink-2"
                   >
-                    {t}
+                    {t.name}
                   </span>
                 ))}
               </div>
