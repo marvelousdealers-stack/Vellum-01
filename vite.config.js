@@ -8,9 +8,6 @@ import tailwindcss from "@tailwindcss/vite";
 // tailwind.config.js anymore, and there should never be one again.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: {
-    open: true, // <-- Automatically opens the project in your default browser
-  },
   resolve: {
     alias: {
       // "@/components/..." → "src/components/..."

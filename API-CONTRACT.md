@@ -7,24 +7,170 @@ models — it's the concrete version of the guide's Section 6 (Database
 Design) and Section 8 (API Endpoints), reconciled against what the UI
 actually does today.
 
+> **Update:** this section is the contract the frontend implements today
+> (`src/api/*.js`). Sections further down predate the router migration and
+> are being rewritten step by step. Turn the mock off with
+> `VITE_USE_MOCK=false` (and set `VITE_API_BASE_URL`); no code changes.
+
+## Conventions (every endpoint)
+
+- **Auth:** `Authorization: Bearer <token>`. A `401` sends the user to login
+  (one handler, `onUnauthorized` in `api/client.js`). The token user decides
+  scope: teachers see their own tests and grading queue; students see only
+  their class's published tests and their own attempts.
+- **Errors:** non-2xx with JSON `{ "message": string, "code"?: string }`.
+  `message` is shown to users as-is. Codes the UI reacts to: `NOT_RELEASED`
+  (403), `NOT_OPEN` (409), `NO_VARIANT` (403), `INVALID_MARKS` (400).
+- **Ids:** `_id` or `id` — both accepted (`api/wire.js` renames `_id`).
+- **Times:** ISO-8601 strings on the wire. These fields are converted to
+  millisecond timestamps in the UI: `createdAt`, `updatedAt`, `publishedAt`,
+  `stoppedAt`, `startedAt`, `deadline`, `submittedAt`, `availableFrom`,
+  `availableUntil`, `at`, `reviewedAt`, `closesAt`. Anything else stays as sent.
+- **Answer keys never reach a student before release:** `correctIndex`,
+  `expectedAnswer` and `rubric` must be stripped from the questions inside a
+  student's attempt until their result is released.
+
+## Auth
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/auth/login` | `{ email, password }` → `{ token, user }`. 401 with `{ message }` on bad credentials; `403 ACCOUNT_DISABLED` for a deactivated account (whose existing tokens also get 401) |
+| GET | `/api/auth/me` | The signed-in user. A 401 here ends the session |
+
+`user` = `{ id, name, email, role: "admin"|"teacher"|"student", active, cls?, classId?, roll? (students), classIds? (teachers) }`.
+The role comes from the account; the UI shows the screens for it and the
+server must enforce it on every endpoint (403 otherwise).
+
+## Reads (what each screen loads)
+
+| Method | Endpoint | Returns | Used by |
+|---|---|---|---|
+| GET | `/api/tests` | Teacher: own tests, with `questionSet` / `variants`. Student: published tests of their class **without questions**. Both: server-computed `status` (`draft`\|`scheduled`\|`live`\|`completed`), `settings` (complete), `questionCount`, `totalMarks` (per student). Re-fetched every 30 s | drafts, review, live, student tests |
+| GET | `/api/attempts` | The student's own attempts. Each has `questions` (snapshot, no answer key), `answers`, `flags`, `status`, `deadline`, and **`released`** and **`totals`** (`null` until released) | student tests, history |
+| GET | `/api/tests/:id/attempts` | Teacher: one row per student in the class — `{ student: { id, name, roll }, attempt: { id, status, startedAt, deadline, submittedAt, submitReason, progress: { answered, total }, flags: [{ type, at }] } \| null }`. Never the answers. Polled every 20 s | live control |
+| GET | `/api/grading/queue` | Teacher: written answers to review — see "Grading" | grade review |
+| GET | `/api/attempts/:id/review` | Student: one released attempt, question by question — see "Grading". `403 NOT_RELEASED` while hidden | history review |
+
+Every read goes through one hook shape: `{ data, isLoading, error, refetch }`
+(`hooks/useResource.js`). After a successful write the matching keys are
+refetched (`api/cache.js`), so the backend never has to push updates.
+
+## Admin: accounts & classes
+
+All admin only (403 otherwise). Writes refetch the users and classes lists.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/users` | Every teacher and student (never admins); optional `?role=`. `[user]` shape above |
+| POST | `/api/users` | `{ name, email, role: "teacher"\|"student", classId? (required for students), classIds? (teachers) }`. Server lowercases the email, assigns a student's roll number (`11A-07`) and emails a temporary password. `409 DUPLICATE_EMAIL`, `400 INVALID_INPUT` |
+| PUT | `/api/users/:id` | `{ active? }` and/or, for students, `{ classId }` (`null` unassigns; a new class gets a new roll). `409 CANNOT_CHANGE_SELF` / `CANNOT_CHANGE_ADMIN` |
+| DELETE | `/api/users/:id` | Removes the account and its class links; test history stays. `409 CANNOT_CHANGE_ADMIN` |
+| POST | `/api/classes` | `{ name, teacherIds? }`. The server derives `code` ("Grade 11 — Section A" → `11A`) and the id. `409 DUPLICATE_CLASS`, `400 INVALID_INPUT` (a non-teacher in `teacherIds`) |
+| PUT | `/api/classes/:id` | `{ name?, teacherIds? }`; the code never changes (tests and students reference it) |
+| DELETE | `/api/classes/:id` | `409 CLASS_IN_USE` while it has tests; otherwise students are unassigned and its subjects removed |
+| GET | `/api/classes/:id/roster` | `{ teachers: [{ id, name, email, classCount }], students: [{ id, name, roll, email, active, average }] }`. `average` = mean % over submitted tests, `null` before the first |
+
+`GET /api/classes` items also carry `subjectCount` and `teachers: [{ id, name }]`.
+
+## Classes & subjects
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/classes` | Classes the user can see: teacher → the ones they teach, student → their own, admin → all. `[{ id, code, name, studentCount }]` |
+| GET | `/api/subjects` | Subjects in those classes (optional `?classId=`), creation order — the first is a class's default. `[{ id, classId, name, outline, createdAt, updatedAt }]` |
+| POST | `/api/subjects` | Teacher. Body `{ classId, name, outline? }`. `400 INVALID_SUBJECT` (blank / over 60 chars), `409 DUPLICATE_SUBJECT` (same name in the class, case-insensitive), `404` for a class they don't teach |
+| PUT | `/api/subjects/:id` | Teacher. Body `{ name?, outline? }` (outline ≤ 20,000 chars). A rename updates `test.subject` on that subject's tests |
+| DELETE | `/api/subjects/:id` | Teacher. `409 SUBJECT_IN_USE` while tests reference it |
+| POST | `/api/subjects/:id/materials` | See Materials. `404` if the subject isn't one of theirs |
+
+Tests carry `subjectId` (and the subject's `name` as `subject`, for display).
+
+## Tests
+
+| Method | Endpoint | Purpose | In guide §8 |
+|---|---|---|---|
+| POST | `/api/tests/generate` | Generate and save a draft. Body: `{ subjectId, title?, mix, targetMarks, duration, mode, difficulty, focusTopics, instruction }`. The server takes class and subject name from `subjectId`. `400 SUBJECT_REQUIRED`, `404` if the teacher has no such subject | yes |
+| PUT | `/api/tests/:id` | Edit a draft. Body: `{ questionSet? , variants? }` (debounce on the client) | yes |
+| POST | `/api/tests/:id/regenerate` | Rebuild questions from the stored rules | proposed |
+| POST | `/api/tests/:id/duplicate` | Copy as a new draft | proposed |
+| DELETE | `/api/tests/:id` | Remove a test (and its attempts) | proposed |
+| POST | `/api/tests/:id/publish` | Body: `{ availableFrom?, availableUntil?, settings? }`. `settings` = `{ release: "immediately"\|"after_close", aiGrading: boolean, allowBack: boolean }`. 400 if any question fails validation | yes |
+| POST | `/api/tests/:id/start-now` | Open a scheduled test immediately | proposed |
+| POST | `/api/tests/:id/stop-now` | Close for all students | yes |
+| POST | `/api/tests/:id/extend` | Body `{ minutes }`. Adds time to the window close and to every in-progress attempt's `deadline`; 409 if the test already ended. Returns `{ closesAt }` | proposed |
+| GET | `/api/tests/:id/live-status` | `{ stopped, closesAt?, deadline? }`, polled every 20 s by a student taking the test. `deadline` is that student's own (so an extension reaches an open test) | yes |
+
+Test document: `{ id, title, subject, classId, cls, status: "draft"|"published",
+mode: "class"|"personal", config, questionSet | null, variants | null,
+schedule: { availableFrom, availableUntil } | null, publishedAt, stoppedAt,
+regeneratedAt, settings, createdAt, updatedAt }`. The client derives
+`scheduled | live | completed` from `schedule` and `stoppedAt`; the backend
+should apply the same rule when enforcing access. `release: "immediately"`
+shows a student their marks as soon as they submit; `"after_close"` waits until
+the test has ended. `aiGrading: false` routes every written answer to the
+teacher's manual queue. `allowBack: false` = one question at a time, no way back.
+
+Question: `{ id, type: "mcq"|"truefalse"|"short"|"long"|"numerical", topic,
+marks, text, options|null, correctIndex|null, expectedAnswer, rubric:
+[{ label, points }] }`.
+
+## Attempts
+
+| Method | Endpoint | Purpose | In guide §8 |
+|---|---|---|---|
+| GET | `/api/tests/:id/start` | Start or resume the student's attempt; returns it with `questions` (own variant in personalized mode). 409 `NOT_OPEN` / 403 `NO_VARIANT` | yes |
+| PUT | `/api/attempts/:id/answers` | Best-effort backup of one answer: `{ questionId, value }`. Ignored after submit | proposed |
+| POST | `/api/tests/:id/flag` | Anti-cheat event `{ type }`, e.g. `"tab-switch"`; server timestamps it | yes |
+| POST | `/api/tests/:id/submit` | `{ reason: "manual"\|"timeout"\|"stopped", answers }`. **The full answer map is sent**, so submit never depends on earlier saves. Idempotent. Grades immediately (see Grading) | yes |
+
+Attempt: `{ id, testId, student, variantIndex|null, startedAt, deadline,
+status: "in_progress"|"submitted", submittedAt, submitReason, questions,
+answers: { [questionId]: number|string }, flags: [{ type, at }] }`. `deadline` =
+`min(start + duration, availableUntil)`, fixed at start. The server should also
+auto-submit attempts past `deadline` or whose test was stopped (the mock does
+this client-side in `settleExpired`; in real mode that function does nothing).
+
+## Grading
+
+A grade, per question of a submitted attempt:
+`{ marks, max, status: "final"|"ai_draft"|"pending", source: "auto"|"ai"|"teacher",
+confidence: 0–1|null, rubric: [{ label, points, awarded }]|null, feedback, aiMarks? }`.
+
+- Objective questions: `final`, `source: "auto"` at submit.
+- Written, AI grading on: `ai_draft` with `marks`, `confidence`, `rubric`,
+  `feedback` from the model (`aiMarks` keeps the original suggestion).
+- Written, AI grading off: `pending`, `marks: null`.
+- Students only ever see `final` marks, so an unreviewed AI mark can't leak.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/api/grading/queue` | Queue items (below), one per written answer on the teacher's tests |
+| PATCH | `/api/grades/:attemptId/:questionId` | `{ marks, feedback?, final }`. `final: true` accepts/overrides (becomes `final`, `source: "teacher"` if the mark differs from `aiMarks`); `false` saves a draft. 400 `INVALID_MARKS` outside `0..max` |
+| POST | `/api/grading/approve` | `{ items: [{ attemptId, questionId }] }` — accept AI marks unchanged. Only `ai_draft` grades change. Returns `{ approved }` |
+
+Queue item: `{ id, attemptId, questionId, testId, student, roll, test, date,
+question, topic, answer, modelAnswer, maxScore, score, aiScore|null,
+confidence: "low"|"med"|"high"|null, status: "pending"|"reviewed",
+manual: boolean, source, rubric, feedback, flags }`. Confidence buckets:
+`<0.6` low, `<0.8` med, otherwise high.
+
+Review (student): `GET /api/attempts/:id/review` →
+`{ attemptId, test: { title, subject, cls }, submittedAt, submitReason, flags,
+totals: { earned, max, complete, notFinal },
+items: [{ question: { id, type, topic, marks, text, options },
+answer, correctIndex|null, modelAnswer, grade }] }`.
+`grade` is `{ status: "final", marks, max, feedback }` once final, otherwise
+just `{ status: "grading", max }` — no marks. `totals` counts final marks only.
+
+---
+
 ## How the frontend is wired for this right now
 
-Every backend call goes through `src/api/*.js`, which sit on top of
-`src/api/client.js`. While `MOCK_MODE` (in `client.js`) is `true`, these
-modules return local mock data instead of calling `fetch` — components
-never know the difference. To connect a real backend:
-
-1. Set `MOCK_MODE = false` in `src/api/client.js` (or wire it to
-   `import.meta.env.VITE_API_BASE_URL` being set).
-2. Fill in the real endpoint calls already stubbed in each `api/*.js`
-   file (the `request(...)` calls are already written to match the
-   table below — most just need the backend to exist).
-3. Nothing in the components needs to change.
-
-Only the flows touched in this pass have an `api/` module so far
-(`materials.js`, `tests.js`, plus the shared `client.js`). The rest of
-Section 8's endpoints don't have a frontend module yet — add one per
-feature as it gets wired, following the same pattern.
+Every backend call goes through `src/api/*.js` on top of `src/api/client.js`,
+and the app only speaks HTTP. While there is no backend, `src/mocks` answers
+those requests in the browser (`VITE_USE_MOCK`, default on). To connect the
+real one: implement this contract, set `VITE_USE_MOCK=false` and
+`VITE_API_BASE_URL`, and delete `src/mocks`. Nothing else changes.
 
 ## Collections (Section 6) vs. current frontend shape
 
