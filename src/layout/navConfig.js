@@ -10,8 +10,8 @@ import {
   BookOpen,
   MessageCircle,
   BarChart3,
+  Layers,
 } from "lucide-react";
-import { GRADE_QUEUE, QUESTION_BANK } from "@/data/tests";
 
 export const NAV_BY_ROLE = {
   admin: [
@@ -19,8 +19,8 @@ export const NAV_BY_ROLE = {
     {
       label: "Manage",
       items: [
-        { id: "users", icon: Users, label: "Accounts", count: 93 },
-        { id: "classes", icon: GraduationCap, label: "Classes", count: 3 },
+        { id: "users", icon: Users, label: "Accounts" },
+        { id: "classes", icon: GraduationCap, label: "Classes" },
       ],
     },
   ],
@@ -29,36 +29,24 @@ export const NAV_BY_ROLE = {
     {
       label: "Content",
       items: [
-        { id: "materials", icon: Upload, label: "Materials", count: 12 },
-        {
-          id: "bank",
-          icon: Library,
-          label: "Question bank",
-          count: QUESTION_BANK.length,
-        },
+        { id: "subjects", icon: Layers, label: "Subjects" },
+        { id: "materials", icon: Upload, label: "Materials" },
+        { id: "bank", icon: Library, label: "Question bank" },
       ],
     },
     {
       label: "Assess",
       items: [
-        { id: "drafts", icon: FileEdit, label: "Drafts", count: 3 },
+        { id: "drafts", icon: FileEdit, label: "Drafts" },
         { id: "live", icon: Radio, label: "Live test", live: true },
-        {
-          id: "review",
-          icon: CheckCircle2,
-          label: "Grade review",
-          count: GRADE_QUEUE.filter(
-            (g) => g.status === "pending" || g.status === "flagged",
-          ).length,
-          alert: true,
-        },
+        { id: "review", icon: CheckCircle2, label: "Grade review", alert: true },
       ],
     },
     {
       label: "Teach",
       items: [
         { id: "lms", icon: BookOpen, label: "Courses" },
-        { id: "chat", icon: MessageCircle, label: "Discussion", count: 5 },
+        { id: "chat", icon: MessageCircle, label: "Discussion" },
       ],
     },
     {
@@ -71,15 +59,15 @@ export const NAV_BY_ROLE = {
       label: null,
       items: [
         { id: "home", icon: Home, label: "Overview" },
-        { id: "take", icon: FileEdit, label: "Take test", count: 1 },
+        { id: "take", icon: FileEdit, label: "Tests" },
       ],
     },
     {
       label: "Learn",
       items: [
-        { id: "history", icon: FileEdit, label: "History", count: 6 },
-        { id: "lms", icon: BookOpen, label: "Courses", count: 3 },
-        { id: "chat", icon: MessageCircle, label: "Discussion", count: 5 },
+        { id: "history", icon: FileEdit, label: "History" },
+        { id: "lms", icon: BookOpen, label: "Courses" },
+        { id: "chat", icon: MessageCircle, label: "Discussion" },
       ],
     },
     {

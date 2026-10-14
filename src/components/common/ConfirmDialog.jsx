@@ -23,7 +23,7 @@ export const ConfirmDialog = ({
 
   return (
     <div
-      className="fixed inset-0 z-100 grid animate-fade-in place-items-center bg-[oklch(0.15_0.06_272_/_0.55)] p-5 backdrop-blur-md"
+      className="fixed inset-0 z-100 grid animate-fade-in place-items-center bg-[oklch(0.15_0.06_272_/_0.55)] p-5 backdrop-blur-md max-narrow:place-items-end max-narrow:p-0"
       onClick={onClose}
     >
       <div
@@ -31,7 +31,7 @@ export const ConfirmDialog = ({
         role="alertdialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="glass-strong w-full max-w-[440px] animate-qin rounded-[var(--radius-modal)] px-8 pb-6 pt-8 text-center shadow-[var(--shadow-modal)]"
+        className="glass-strong w-full max-w-[440px] animate-qin rounded-[var(--radius-modal)] px-8 pb-6 pt-8 text-center shadow-[var(--shadow-modal)] max-narrow:max-w-none max-narrow:rounded-b-none max-narrow:px-5 max-narrow:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
       >
         <div
           className={cn(
@@ -51,27 +51,22 @@ export const ConfirmDialog = ({
             {message}
           </p>
         )}
-        <div className="flex justify-center gap-2">
+        <div className="flex flex-col-reverse gap-2 narrow:flex-row narrow:justify-center">
           <Button
             onClick={onClose} variant="ghost"
           >
             {cancelLabel}
           </Button>
-          <button
+          <Button
             data-autofocus
+            variant={tone === "danger" ? "destructive" : "default"}
             onClick={() => {
               onConfirm?.();
               onClose?.();
             }}
-            className={cn(
-              "rounded-[var(--radius-control)] px-4 py-2 text-[13px] font-semibold transition-all duration-300",
-              tone === "danger"
-                ? "bg-danger text-on-danger shadow-[var(--shadow-danger)] hover:opacity-90"
-                : "bg-primary text-on-primary shadow-[var(--shadow-primary)] hover:bg-primary-2 hover:shadow-[var(--shadow-glow)]",
-            )}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

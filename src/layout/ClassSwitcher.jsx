@@ -40,7 +40,7 @@ export const ClassSwitcher = ({ classes, activeId, onChange }) => {
         )}
       >
         <span className="col-start-1 row-start-1 truncate text-[12px] font-semibold text-sidebar-accent">
-          {active?.subject || "Class"}
+          {active ? `Class ${active.short}` : "Class"}
         </span>
         <span className="col-start-1 row-start-2 truncate text-[13.5px] font-semibold tracking-tight text-sidebar-ink">
           {active?.name || "Select class"}
@@ -99,7 +99,7 @@ export const ClassSwitcher = ({ classes, activeId, onChange }) => {
                     {c.name}
                   </span>
                   <span className="block truncate text-[12px] text-sidebar-ink-3">
-                    {c.subject} · {c.students} students
+                    {c.students} students
                   </span>
                 </span>
                 {isActive && <Check size={14} className="shrink-0 text-sidebar-accent" />}

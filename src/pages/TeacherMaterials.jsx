@@ -2,14 +2,16 @@ import { useState, useRef, useEffect } from "react";
 import { Upload, Minus, Sparkles, FileText } from "lucide-react";
 import { useNavigate } from "react-router";
 import { ACCEPTED_TYPES, MAX_FILE_BYTES, guessRoute, uploadMaterials } from "@/api/materials";
-import { Bento, Conn, SectionHeader } from "@/components/common";
+import { Bento, Conn, SectionHeader, Scope } from "@/components/common";
 import { ExtractedTextReview } from "@/components/teacher-materials/ExtractedTextReview";
+import { useApp } from "@/context/AppContext";
 import { EXTRACTED_TOPICS } from "@/data/materials";
 import { cn } from "@/lib/cn";
 import { createId } from "@/lib/id";
 import { Button } from "@/components/ui/button";
 
 const TeacherMaterials = () => {
+  const { activeSubject } = useApp();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [phase, setPhase] = useState("idle");
@@ -77,7 +79,7 @@ const TeacherMaterials = () => {
     setPhase("processing");
     setErrors([]);
     try {
-      await uploadMaterials("physics-11a", items);
+      await uploadMaterials(activeSubject.id, items);
       setPhase("extracted");
     } catch (err) {
       setPhase("idle");
@@ -99,13 +101,13 @@ const TeacherMaterials = () => {
 
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
-        Physics · Grade 11A <span className="text-ink-3">/</span> Materials
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        <Scope /> <span className="text-ink-3">/</span> Materials
       </div>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
             Feed it <span className="text-ink-3">anything</span>
           </h1>
           <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-ink-2">

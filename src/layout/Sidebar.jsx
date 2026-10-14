@@ -1,17 +1,21 @@
 import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import { useNavigate, useLocation } from "react-router";
 import { ClassSwitcher } from "./ClassSwitcher";
+import { SubjectSwitcher } from "./SubjectSwitcher";
 import { NAV_BY_ROLE } from "./navConfig";
-import { SearchHint } from "./SearchHint";
 import { ThemeToggle } from "./ThemeToggle";
 import { BrandMark } from "@/components/common";
 import { useApp } from "@/context/AppContext";
 import { useToast } from "@/context/ToastContext";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useStudentTests } from "@/hooks/useAttempts";
+import { useUsers } from "@/hooks/useAdmin";
+import { useGradeQueue } from "@/hooks/useGrading";
+import { useTests } from "@/hooks/useTests";
 import { cn } from "@/lib/cn";
 import { resolvePath } from "@/routes/paths";
 
-export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
+export const Sidebar = ({ role, mobileOpen, onCloseMobile }) => {
   const [collapsed, setCollapsed] = usePersistentState(
     "vellum.sidebarCollapsed",
     false,
@@ -19,8 +23,29 @@ export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const { classList, activeClassId, setActiveClassId, setRole } = useApp();
+  const {
+    user, classList, activeClassId, setActiveClassId,
+    classSubjects, activeSubject, setActiveSubjectId, courses, signOut,
+  } = useApp();
   const nav = NAV_BY_ROLE[role] || [];
+  // Badge counts that come from real (store-backed) data override the static
+  // placeholder in navConfig; everything else keeps its configured count.
+  const { data: tests } = useTests();
+  const { data: studentTests } = useStudentTests();
+  const { data: adminUsers } = useUsers({ enabled: role === "admin" });
+  const { data: gradeQueue } = useGradeQueue({ enabled: role === "teacher" });
+  const liveCounts =
+    role === "admin"
+      ? { users: adminUsers?.length, classes: classList.length }
+      : role === "teacher"
+      ? {
+          drafts: tests.filter((t) => t.status === "draft").length || undefined,
+          review: gradeQueue.filter((g) => g.status === "pending").length || undefined,
+        }
+      : role === "student"
+        ? { take: studentTests.open.length || undefined, lms: courses.length || undefined }
+        : {};
+  const countFor = (item) => liveCounts[item.id] ?? item.count;
   const isActive = (viewId) => {
     const path = resolvePath(role, viewId);
     return viewId === "home" || viewId === "admin"
@@ -32,7 +57,7 @@ export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
     onCloseMobile?.();
   };
   const handleLogout = () => {
-    setRole(null);
+    signOut();
     navigate("/login", { replace: true });
     toast.push("Signed out", "info");
   };
@@ -113,10 +138,21 @@ export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
             }}
           />
         )}
+        {role === "teacher" && !collapsed && (
+          <SubjectSwitcher
+            subjects={classSubjects}
+            activeId={activeSubject?.id}
+            onChange={setActiveSubjectId}
+            manageTo={resolvePath("teacher", "subjects")}
+          />
+        )}
 
         <nav
           className={cn(
-            "relative min-h-0 flex-1 overflow-y-auto px-3 py-3",
+            // Scrolls on short screens. The bottom padding + mask fade clipped items out
+            // instead of cutting them off against the profile row.
+            "relative min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-3",
+            "[mask-image:linear-gradient(to_bottom,black_calc(100%-24px),transparent)]",
             collapsed && "tablet:px-2",
           )}
         >
@@ -162,7 +198,7 @@ export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
                     {!collapsed && item.live && (
                       <span className="ml-0.5 size-1.5 shrink-0 animate-beacon rounded-full bg-success" />
                     )}
-                    {!collapsed && item.count != null && (
+                    {!collapsed && countFor(item) != null && (
                       <span
                         className={cn(
                           "ml-auto shrink-0 rounded-full px-2 py-0.5 text-[12px] font-semibold tabular-nums",
@@ -171,7 +207,7 @@ export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
                             : "text-sidebar-ink-3",
                         )}
                       >
-                        {item.count}
+                        {countFor(item)}
                       </span>
                     )}
                   </button>
@@ -181,11 +217,6 @@ export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
           ))}
         </nav>
 
-        {!collapsed && (
-          <div className="hidden shrink-0 px-5 pb-3 tablet:block">
-            <SearchHint onClick={onSearch} />
-          </div>
-        )}
 
         <div
           className={cn(
@@ -193,17 +224,19 @@ export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
             collapsed && "tablet:justify-center tablet:px-0",
           )}
         >
-          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-sidebar-accent text-[12px] font-semibold text-sidebar-bg ">
-            {role === "teacher" ? "RC" : role === "admin" ? "SW" : "MO"}
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-[12px] font-semibold text-sidebar-bg ">
+            {(user?.name ?? "")
+              .split(" ")
+              .filter((w) => /^[A-Za-zÀ-ÿ]/.test(w))
+              .slice(-2)
+              .map((w) => w[0])
+              .join("")
+              .toUpperCase() || "?"}
           </span>
           {!collapsed && (
             <div className="min-w-0 flex-1 truncate text-[12px] leading-tight">
               <div className="truncate font-medium text-sidebar-ink">
-                {role === "teacher"
-                  ? "Dr. R. Chen"
-                  : role === "admin"
-                    ? "S. Whitfield"
-                    : "Maya Okafor"}
+                {user?.name}
               </div>
               <div className="truncate text-[12px] text-sidebar-ink-3">
                 {role === "teacher"
@@ -218,7 +251,7 @@ export const Sidebar = ({ role, mobileOpen, onCloseMobile, onSearch }) => {
           {!collapsed && (
             <button
               onClick={handleLogout}
-              className="grid size-7 shrink-0 place-items-center rounded-md border border-sidebar-rule text-sidebar-ink-3 transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-sidebar-accent"
+              className="grid size-8 shrink-0 place-items-center rounded-lg border border-sidebar-rule text-sidebar-ink-3 transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-sidebar-accent"
               title="Sign out"
               aria-label="Sign out"
             >

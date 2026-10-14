@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 export const TIP = {
   contentStyle: {
-    background: "var(--color-surface)",
+    background: "var(--color-floating)",
     border: "1px solid var(--color-rule-2)",
     borderRadius: 10,
     fontFamily: "var(--font-sans)",

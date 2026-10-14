@@ -59,14 +59,14 @@ export const StudentLMS = ({
 
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
         My courses <span className="text-ink-3">/</span>{" "}
         {activeCourse?.title || "—"}
       </div>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
             {activeCourse?.title}
           </h1>
           <p className="mt-2 max-w-[680px] text-[14px] leading-relaxed text-ink-2">

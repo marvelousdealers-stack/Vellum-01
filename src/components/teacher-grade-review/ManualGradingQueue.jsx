@@ -1,29 +1,37 @@
-import { useState, useMemo, Fragment } from "react";
-import { CheckCircle2, Sparkles, FileEdit, Clock } from "lucide-react";
+import { useState, Fragment } from "react";
+import { CheckCircle2, FileEdit, Flag } from "lucide-react";
 import { EmptyState, MetricCard, TableShell, Td, Th } from "@/components/common";
-import { useToast } from "@/context/ToastContext";
-import { GRADE_QUEUE } from "@/data/tests";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 
 // ═══════════════════════════════════════════════════════════════
 // MANUAL GRADING QUEUE
+// Written answers from tests published with AI grading off. `items` are
+// grade-queue items (api/grades.js) with `manual: true`; `onSave` saves one
+// mark: onSave(item, marks, remark, final).
 // ═══════════════════════════════════════════════════════════════
-export const ManualGradingQueue = ({ onEnableAI }) => {
-  const toast = useToast();
+export const ManualGradingQueue = ({ items, onSave }) => {
   const [expanded, setExpanded] = useState(null);
   const [scores, setScores] = useState({});
   const [remarks, setRemarks] = useState({});
+  const [busy, setBusy] = useState(false);
 
-  const queue = useMemo(
-    () =>
-      GRADE_QUEUE.filter((g) => !g.reviewed).map((g) => ({
-        ...g,
-        aiScore: null,
-        confidence: null,
-      })),
-    [],
-  );
+  const queue = items.filter((g) => g.status !== "reviewed");
+  const doneCount = items.length - queue.length;
+  const flagged = queue.filter((g) => g.flags > 0).length;
+  const tests = new Set(items.map((g) => g.testId)).size;
+
+  const save = async (g, final) => {
+    const raw = scores[g.id] ?? (g.score ?? "");
+    if (raw === "" || Number.isNaN(Number(raw))) return;
+    setBusy(true);
+    try {
+      await onSave(g, Number(raw), remarks[g.id] ?? g.feedback ?? "", final);
+      if (final) setExpanded(null);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div>
@@ -37,29 +45,28 @@ export const ManualGradingQueue = ({ onEnableAI }) => {
           deltaTone="warning"
         />
         <MetricCard
-          icon={Sparkles}
-          iconTone="neutral"
-          label="Graded by AI"
-          value={0}
-          delta="AI grading is off"
-          deltaTone="warning"
+          icon={CheckCircle2}
+          iconTone="success"
+          label="Marked"
+          value={doneCount}
+          delta="Done by you"
+          deltaTone="success"
         />
         <MetricCard
           icon={FileEdit}
           iconTone="primary"
           label="Written answers"
-          value={12}
-          delta="Across 3 tests"
+          value={items.length}
+          delta={`Across ${tests} ${tests === 1 ? "test" : "tests"}`}
           deltaTone="success"
         />
         <MetricCard
-          icon={Clock}
-          iconTone="neutral"
-          label="Average time"
-          value={2}
-          unit="min"
-          delta="Per answer"
-          deltaTone="success"
+          icon={Flag}
+          iconTone={flagged > 0 ? "danger" : "neutral"}
+          label="Flagged"
+          value={flagged}
+          delta="Tab switches detected"
+          deltaTone={flagged > 0 ? "danger" : "success"}
         />
       </div>
 
@@ -70,13 +77,8 @@ export const ManualGradingQueue = ({ onEnableAI }) => {
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[12px] text-ink-3">
-              AI grading is off for this test
+              Tests published with AI grading off
             </span>
-            <Button
-              onClick={onEnableAI} variant="outline" size="sm"
-            >
-              Re-enable AI grading
-            </Button>
           </div>
         </div>
 
@@ -100,7 +102,7 @@ export const ManualGradingQueue = ({ onEnableAI }) => {
             <tbody>
               {queue.map((g) => {
                 const isOpen = expanded === g.id;
-                const displayed = scores[g.id] ?? "";
+                const displayed = scores[g.id] ?? g.score ?? "";
                 return (
                   <Fragment key={g.id}>
                     <tr
@@ -194,15 +196,12 @@ export const ManualGradingQueue = ({ onEnableAI }) => {
                               <span className="text-[13.5px] text-ink-3">
                                 / {g.maxScore}
                               </span>
-                              <Button variant="outline" size="sm" className="ml-auto">
-                                Open rubric
-                              </Button>
                             </div>
 
                             <textarea
                               rows={2}
                               placeholder="Add a remark for the student…"
-                              value={remarks[g.id] || ""}
+                              value={remarks[g.id] ?? g.feedback ?? ""}
                               onChange={(e) =>
                                 setRemarks((prev) => ({
                                   ...prev,
@@ -213,22 +212,15 @@ export const ManualGradingQueue = ({ onEnableAI }) => {
                             />
 
                             <div className="flex flex-wrap gap-2 border-t border-rule pt-4">
-                              <Button
-                                onClick={() =>
-                                  toast.push(
-                                    `${g.student} graded at ${displayed || "—"} / ${g.maxScore}`,
-                                    "success",
-                                  )
-                                }
-                              >
-                                Save mark &amp; move to next
+                              <Button onClick={() => save(g, true)} disabled={busy || displayed === ""}>
+                                Save mark
                               </Button>
                               <Button
-                                onClick={() =>
-                                  toast.push("Saved without releasing", "info")
-                                } variant="outline"
+                                onClick={() => save(g, false)}
+                                disabled={busy || displayed === ""}
+                                variant="outline"
                               >
-                                Save without releasing
+                                Save as draft
                               </Button>
                             </div>
                           </div>

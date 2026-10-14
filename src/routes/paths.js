@@ -16,6 +16,7 @@ export const VIEW_PATHS = {
   },
   teacher: {
     home:      "/teacher",
+    subjects:  "/teacher/subjects",
     materials: "/teacher/materials",
     clusters:  "/teacher/clusters",
     bank:      "/teacher/bank",
@@ -29,7 +30,7 @@ export const VIEW_PATHS = {
   },
   student: {
     home:      "/student",
-    take:      "/take",
+    take:      "/student/tests",
     history:   "/student/history",
     lms:       "/student/lms",
     chat:      "/student/chat",

@@ -1,5 +1,5 @@
 import { TrendingUp, Target, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Bento, Conn, MetricCard, SectionHeader } from "@/components/common";
+import { Bento, Conn, MetricCard, SectionHeader, Scope } from "@/components/common";
 import { InteractiveDotPlot } from "@/components/common/charts/InteractiveDotPlot";
 import { SmallMultiple } from "@/components/common/charts/SmallMultiple";
 import { TOPICS, TREND } from "@/data/analytics";
@@ -13,12 +13,12 @@ export const AnalyticsOverview = ({ onStudentClick }) => {
   const last = TREND[TREND.length - 1];
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
-        Physics · Grade 11A <span className="text-ink-3">/</span> Analytics
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        <Scope /> <span className="text-ink-3">/</span> Analytics
       </div>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
             Analytics <span className="text-ink-3">· T1 – T6</span>
           </h1>
           <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-ink-2">
@@ -75,8 +75,8 @@ export const AnalyticsOverview = ({ onStudentClick }) => {
                 </tr>
               </thead>
               <tbody>
-                {STUDENTS.map((s, i) => (
-                  <tr key={i} onClick={() => onStudentClick?.(s)} className="cursor-pointer border-b border-rule transition-colors last:border-b-0 hover:bg-raised/50">
+                {STUDENTS.map((s) => (
+                  <tr key={s.roll} onClick={() => onStudentClick?.(s)} className="cursor-pointer border-b border-rule transition-colors last:border-b-0 hover:bg-raised/50">
                     <td className="px-4 py-3 text-[13.5px] font-medium text-ink">{s.name}</td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-ink">{s.overall}%</td>
                     <td className="px-4 py-3">

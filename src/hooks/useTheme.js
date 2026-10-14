@@ -24,6 +24,14 @@ const syncThemeColor = (theme) => {
   });
 };
 
+const applyTheme = (t) => {
+  const root = document.documentElement;
+  root.setAttribute("data-theme", t);
+  root.classList.toggle("dark", t === "dark");
+  root.classList.toggle("light", t === "light");
+  syncThemeColor(t);
+};
+
 export const useTheme = () => {
   const [theme, setTheme] = usePersistentState(
     THEME_KEY,
@@ -31,16 +39,21 @@ export const useTheme = () => {
   );
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute("data-theme", theme);
-    root.classList.toggle("dark",  theme === "dark");
-    root.classList.toggle("light", theme === "light");
-    syncThemeColor(theme);
+    applyTheme(theme);
   }, [theme]);
 
+  // Cross-fades the whole UI when the browser supports View Transitions
+  // (skipped for reduced-motion users); otherwise switches instantly.
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  }, [setTheme]);
+    const next = theme === "light" ? "dark" : "light";
+    const commit = () => {
+      applyTheme(next); // DOM must change synchronously inside the transition callback
+      setTheme(next);
+    };
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (document.startViewTransition && !reduce) document.startViewTransition(commit);
+    else commit();
+  }, [theme, setTheme]);
 
   return { theme, setTheme, toggleTheme };
 };

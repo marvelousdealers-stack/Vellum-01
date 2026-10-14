@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button";
 export const CreateClassModal = ({
   open,
   onClose,
-  onCreated,
+  onCreate,
   teachers = [],
 }) => {
   const toast = useToast();
   const [name, setName] = useState("");
-  const [year, setYear] = useState("2026");
+  const [busy, setBusy] = useState(false);
   const [assigned, setAssigned] = useState([]);
 
   if (!open) return null;
@@ -23,16 +23,22 @@ export const CreateClassModal = ({
   const reset = () => {
     setName("");
     setAssigned([]);
-    setYear("2026");
   };
-  const submit = () => {
+  const submit = async () => {
     if (!name.trim()) {
       toast.push("Class name is required", "error");
       return;
     }
-    onCreated?.({ name, year, teachers: assigned });
-    reset();
-    onClose();
+    setBusy(true);
+    try {
+      await onCreate?.({ name, teacherIds: assigned });
+      reset();
+      onClose();
+    } catch (err) {
+      toast.push(err.message || "Couldn't create the class", "error");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -50,6 +56,7 @@ export const CreateClassModal = ({
           </Button>
           <Button
             onClick={submit}
+            disabled={busy}
           >
             Create class
           </Button>
@@ -65,13 +72,6 @@ export const CreateClassModal = ({
           className={inputClass}
         />
       </Field>
-      <Field label="Academic year">
-        <input
-          value={year}
-          onChange={(e) => setYear(e.target.value)}
-          className={inputClass}
-        />
-      </Field>
       <Field
         label="Assign teachers"
         hint="Students can be enrolled after the class is created"
@@ -84,11 +84,11 @@ export const CreateClassModal = ({
           )}
           {teachers.map((t) => (
             <Chip
-              key={t}
-              active={assigned.includes(t)}
-              onClick={() => toggle(t)}
+              key={t.id}
+              active={assigned.includes(t.id)}
+              onClick={() => toggle(t.id)}
             >
-              {t}
+              {t.name}
             </Chip>
           ))}
         </ChipRow>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, Eye, Users, CheckCircle2, FileEdit, Search as SearchIcon } from "lucide-react";
 import { DraftReviewScreen } from "./DraftReviewScreen";
 import { Chip, ChipRow, EmptyState, MetricCard, StatusDot, Td, Th } from "@/components/common";
+import { sumMarks, validateQuestions } from "@/lib/questions";
 import { Button } from "@/components/ui/button";
 
 // ═══════════════════════════════════════════════════════════════
@@ -14,14 +15,24 @@ export const VariantsReviewScreen = ({
   onBack,
   onPreview,
   onPublishAll,
+  backLabel = "← Back to drafts",
+  scope = "",
+  title,
+  readOnly = false,
+  saveState,
 }) => {
   const [openIndex, setOpenIndex] = useState(null);
   const [reviewed, setReviewed] = useState(() => new Set());
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const marksPerVariant = config.mix.reduce((s, r) => s + r.count * r.marks, 0);
-  const questionsPerVariant = config.mix.reduce((s, r) => s + r.count, 0);
+  // Taken from the variants themselves (not config.mix) so the numbers stay
+  // right after the teacher adds, removes or re-marks questions.
+  const marksPerVariant = sumMarks(variants[0]?.questions);
+  const questionsPerVariant = variants[0]?.questions.length ?? 0;
+  const invalidCount = variants.filter(
+    (v) => validateQuestions(v.questions).length > 0,
+  ).length;
 
   const openVariant = (i) => {
     setOpenIndex(i);
@@ -40,8 +51,11 @@ export const VariantsReviewScreen = ({
           onVariantsChange(copy);
         }}
         onBack={() => setOpenIndex(null)}
-        onPreview={onPreview}
-        onSave={() => setOpenIndex(null)}
+        onPreview={onPreview ? () => onPreview(openIndex) : undefined}
+        onSave={readOnly ? undefined : () => setOpenIndex(null)}
+        scope={scope}
+        readOnly={readOnly}
+        saveState={saveState}
         backLabel="← Back to student list"
         heading={`Review — ${v.studentName}`}
         crumbLabel={`Review draft · ${v.studentName}`}
@@ -67,39 +81,39 @@ export const VariantsReviewScreen = ({
         onClick={onBack} variant="ghost" size="sm" className="mb-3"
       >
         <ArrowLeft size={13} />
-        Back to rules
+        {backLabel.replace("← ", "")}
       </Button>
 
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
-        Physics · Grade 11A <span className="text-ink-3">/</span> New test{" "}
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        {scope && <>{scope} <span className="text-ink-3">/</span> </>}Drafts{" "}
         <span className="text-ink-3">/</span> Review variants
       </div>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
-            Review each student's test
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
+            {title ? `${title} — student variants` : "Review each student's test"}
           </h1>
           <p className="mt-2 max-w-[680px] text-[14px] leading-relaxed text-ink-2">
             {variants.length} personalized variants · {questionsPerVariant}{" "}
             questions · {marksPerVariant} marks each. Spot-check a few, fix
             anything that looks off, then publish all at once — you don't need
             to open every one.
+            {invalidCount > 0 &&
+              ` ${invalidCount} ${invalidCount === 1 ? "variant has" : "variants have"} issues that will block publishing.`}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           {onPreview && (
-            <Button
-              onClick={onPreview} variant="outline"
-            >
+            <Button onClick={() => onPreview(0)} variant="outline">
               <Eye size={13} /> Preview
             </Button>
           )}
-          <Button
-            onClick={onPublishAll}
-          >
-            Publish all {variants.length} →
-          </Button>
+          {onPublishAll && (
+            <Button onClick={onPublishAll}>
+              Publish all {variants.length} →
+            </Button>
+          )}
         </div>
       </div>
 

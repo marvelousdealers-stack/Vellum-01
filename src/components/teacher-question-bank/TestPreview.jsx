@@ -1,59 +1,37 @@
 import { useState } from "react";
 import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/cn";
+import { isChoice, typeLabel } from "@/lib/questions";
 import { Button } from "@/components/ui/button";
 
 // ═══════════════════════════════════════════════════════════════
 // TEST PREVIEW
 // ═══════════════════════════════════════════════════════════════
-const PREVIEW_QUESTIONS = [
-  {
-    id: 1,
-    type: "MCQ",
-    topic: "Newton's Laws",
-    marks: 2,
-    text: "A 5 kg block rests on a frictionless horizontal surface. A horizontal force of 20 N is applied. What is the block's acceleration?",
-    options: ["2 m/s²", "4 m/s²", "10 m/s²", "25 m/s²"],
-  },
-  {
-    id: 2,
-    type: "Short answer",
-    topic: "Newton's Laws",
-    marks: 4,
-    text: "State Newton's Second Law of Motion and explain, in your own words, how it relates to the concept of inertia.",
-  },
-  {
-    id: 3,
-    type: "MCQ",
-    topic: "Thermodynamics",
-    marks: 2,
-    text: "In an isothermal expansion of an ideal gas, which quantity remains constant throughout the process?",
-    options: ["Internal energy", "Pressure", "Volume", "Heat transferred"],
-  },
-  {
-    id: 4,
-    type: "Numerical",
-    topic: "Kinematics",
-    marks: 3,
-    text: "A car of mass 1200 kg decelerates uniformly from 25 m/s to rest in 8 seconds. Calculate the magnitude of the average braking force.",
-  },
-];
-
-export const TestPreview = ({ onExit }) => {
+export const TestPreview = ({ title = "Test preview", forStudent, questions = [], onExit }) => {
   const toast = useToast();
   const [qIndex, setQIndex] = useState(0);
-  const q = PREVIEW_QUESTIONS[qIndex];
-  const isText = q.type === "Short answer" || q.type === "Numerical";
+  const q = questions[qIndex];
+  if (!q) {
+    return (
+      <div className="grid min-h-dvh place-items-center bg-bg p-6 text-center">
+        <div>
+          <p className="mb-4 text-[14px] text-ink-2">This test has no questions yet.</p>
+          <Button onClick={onExit} variant="outline">Back to draft</Button>
+        </div>
+      </div>
+    );
+  }
+  const isText = !isChoice(q);
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-primary/30 bg-bg/85 px-4 py-3 backdrop-blur-xl tablet:px-8">
         <div className="flex min-w-0 items-center gap-3.5">
           <span className="font-display text-[14.5px] font-semibold tracking-[-0.01em] text-ink">
-            Newton's Laws — Unit Test
+            {title}
           </span>
           <span className="rounded-full border border-primary/25 bg-primary-soft px-2 py-0.5 text-[12px] font-semibold text-primary">
-            Preview mode
+            {forStudent ? `Preview · ${forStudent}` : "Preview mode"}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -71,7 +49,7 @@ export const TestPreview = ({ onExit }) => {
       <main className="flex flex-1 items-start justify-center px-4 py-12 tablet:px-8 tablet:py-16">
         <div className="w-full max-w-[680px]">
           <div className="mb-10 flex gap-1">
-            {PREVIEW_QUESTIONS.map((_, i) => (
+            {questions.map((_, i) => (
               <span
                 key={i}
                 className={cn(
@@ -86,9 +64,9 @@ export const TestPreview = ({ onExit }) => {
             ))}
           </div>
 
-          <div className="mb-5 flex items-center justify-between font-mono text-[12px] font-medium text-ink-3">
+          <div className="mb-5 flex items-center justify-between text-[13px] font-medium text-ink-3">
             <span>
-              Question {qIndex + 1} of {PREVIEW_QUESTIONS.length} · {q.type}
+              Question {qIndex + 1} of {questions.length} · {typeLabel(q.type)}
             </span>
             <span>{q.marks} marks</span>
           </div>
@@ -132,13 +110,13 @@ export const TestPreview = ({ onExit }) => {
             </span>
             <Button
               onClick={() => {
-                if (qIndex === PREVIEW_QUESTIONS.length - 1) {
+                if (qIndex === questions.length - 1) {
                   toast.push("End of preview", "info");
                   onExit();
                 } else setQIndex(qIndex + 1);
               }}
             >
-              {qIndex === PREVIEW_QUESTIONS.length - 1
+              {qIndex === questions.length - 1
                 ? "Finish preview"
                 : "Next →"}
             </Button>

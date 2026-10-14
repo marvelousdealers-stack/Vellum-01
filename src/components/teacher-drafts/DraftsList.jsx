@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, FileEdit, Clock, Radio, CheckCircle2, Search as SearchIcon } from "lucide-react";
-import { Chip, ChipRow, EmptyState, MetricCard, StatusDot, Td, Th } from "@/components/common";
+import { Chip, ChipRow, EmptyState, MetricCard, StatusDot, Scope, Td, Th } from "@/components/common";
 import { useApp } from "@/context/AppContext";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -36,17 +36,22 @@ export const DraftsList = ({
   onNew,
   onRegenerate,
   onDuplicate,
+  onLiveView,
+  onStartNow,
+  onStop,
 }) => {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [showAllClasses, setShowAllClasses] = useState(false);
-  const { activeClassObj } = useApp();
+  const { activeClassObj, activeSubject } = useApp();
 
   const activeClass = activeClassObj;
   const classScoped =
     showAllClasses || !activeClass
       ? drafts
-      : drafts.filter((d) => d.cls === activeClass.short);
+      : drafts.filter(
+          (d) => d.cls === activeClass.short && (!activeSubject || d.subjectId === activeSubject.id),
+        );
 
   const counts = {
     draft: classScoped.filter((d) => d.status === "draft").length,
@@ -103,15 +108,14 @@ export const DraftsList = ({
 
   return (
     <div className="mx-auto max-w-[1360px] px-5 py-6 tablet:px-10 tablet:py-8">
-      <div className="mb-5 flex items-center gap-2 font-mono text-[12px] font-medium text-ink-3">
-        {activeClass?.subject || "Physics"} ·{" "}
-        {activeClass?.name || "Grade 11 — Section A"}{" "}
+      <div className="mb-5 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        <Scope />{" "}
         <span className="text-ink-3">/</span> Drafts
       </div>
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-serif text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">
+          <h1 className="font-serif text-[28px] font-semibold tablet:text-[34px] leading-[1.1] tracking-[-0.02em] text-ink">
             Drafts <span className="text-ink-3">&amp; scheduled</span>
           </h1>
           <p className="mt-2 max-w-[680px] text-[14px] leading-relaxed text-ink-2">
@@ -189,7 +193,7 @@ export const DraftsList = ({
             )}
           {showAllClasses && (
             <Chip active onClick={() => setShowAllClasses(false)}>
-              {activeClass?.short} only
+              {activeSubject?.name} · {activeClass?.short} only
             </Chip>
           )}
         </ChipRow>
@@ -235,7 +239,14 @@ export const DraftsList = ({
                   >
                     <Td className="text-[13.5px] font-medium text-ink">
                       <div className="min-w-0">
-                        <div className="truncate">{d.title}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="truncate">{d.title}</span>
+                          {d.mode === "personal" && (
+                            <span className="shrink-0 rounded-full bg-raised px-2 py-0.5 text-[12px] font-medium text-ink-3">
+                              Per student
+                            </span>
+                          )}
+                        </div>
                         {d.regeneratedAt && (
                           <div className="mt-0.5 font-mono text-[12px] text-ink-3">
                             Regenerated {d.regeneratedAt}
@@ -251,7 +262,7 @@ export const DraftsList = ({
                       {d.marks}
                     </Td>
                     <Td>
-                      {d.questionSet && d.questionSet.length > 0 ? (
+                      {d.questionSet?.length > 0 || d.variants?.length > 0 ? (
                         <span className="rounded-full border border-primary/25 bg-primary-dim px-2 py-0.5 text-[12px] font-medium text-primary">
                           AI-generated
                         </span>
@@ -308,22 +319,49 @@ export const DraftsList = ({
                             </RowBtn>
                           </>
                         )}
-                        {d.status === "live" && (
+                        {d.status === "scheduled" && (
                           <RowBtn
                             className="hidden narrow:inline-flex"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStartNow?.(d);
+                            }}
                           >
-                            Live view
+                            Start now
                           </RowBtn>
                         )}
-                        <RowBtn
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(d);
-                          }}
-                        >
-                          Delete
-                        </RowBtn>
+                        {d.status === "live" && (
+                          <>
+                            <RowBtn
+                              className="hidden narrow:inline-flex"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onLiveView?.(d);
+                              }}
+                            >
+                              Live view
+                            </RowBtn>
+                            <RowBtn
+                              className="hidden narrow:inline-flex"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStop?.(d);
+                              }}
+                            >
+                              Stop
+                            </RowBtn>
+                          </>
+                        )}
+                        {d.status !== "live" && (
+                          <RowBtn
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(d);
+                            }}
+                          >
+                            Delete
+                          </RowBtn>
+                        )}
                       </div>
                     </Td>
                   </tr>

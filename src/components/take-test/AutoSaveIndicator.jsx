@@ -1,14 +1,25 @@
 import { Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export const AutoSaveIndicator = ({ saved }) => (
+// state: "saved" | "saving" | "error"
+export const AutoSaveIndicator = ({
+  state = "saved",
+  errorText = "Couldn't save — retrying. Your answers are kept on this page.",
+}) => (
   <div
+    role="status"
     className={cn(
       "inline-flex items-center gap-1.5 text-[12px] font-medium transition-colors",
-      saved ? "text-success" : "text-ink-3",
+      state === "saved" && "text-success",
+      state === "saving" && "text-ink-3",
+      state === "error" && "text-danger",
     )}
   >
-    {saved ? <Check size={12} /> : <Sparkles size={12} />}
-    {saved ? "Auto-saved just now" : "Saving…"}
+    {state === "saved" ? <Check size={12} /> : <Sparkles size={12} />}
+    {state === "saved"
+      ? "Auto-saved"
+      : state === "saving"
+        ? "Saving…"
+        : errorText}
   </div>
 );

@@ -1,5 +1,4 @@
-import { MOCK_MODE, mockDelay, request } from "./client";
-import { EXTRACTED_TOPICS } from "@/data/materials";
+import { call } from "./client";
 
 // Matches the guide's §7.3: each uploaded item is tagged "outline" or
 // "past paper" (plus an optional year for past papers), and the backend
@@ -24,9 +23,8 @@ export const ACCEPTED_TYPES = [
   "text/plain",
 ];
 
-export const MAX_FILE_BYTES = 25 * 1024 * 1024;
+export const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB
 
- // 25 MB
 
 /**
  * Upload a batch of outline/past-paper material for a subject.
@@ -36,12 +34,7 @@ export const MAX_FILE_BYTES = 25 * 1024 * 1024;
  * Real endpoint: POST /api/subjects/:subjectId/materials (multipart/form-data)
  * Real response: { topics: [{ name, weight, thin }], warnings?: string[] }
  */
-export const uploadMaterials = async (subjectId, items) => {
-  if (MOCK_MODE) {
-    await mockDelay(2600);
-    return { topics: EXTRACTED_TOPICS, warnings: [] };
-  }
-
+export const uploadMaterials = (subjectId, items) => {
   const form = new FormData();
   items.forEach((item) => {
     form.append("tag[]", item.tag);
@@ -49,5 +42,5 @@ export const uploadMaterials = async (subjectId, items) => {
     if (item.file) form.append("files", item.file);
     else form.append("pastedText[]", item.text || "");
   });
-  return request(`/subjects/${subjectId}/materials`, { method: "POST", body: form });
+  return call(`/subjects/${subjectId}/materials`, { method: "POST", body: form });
 };
